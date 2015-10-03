@@ -24,8 +24,8 @@ var ZipConstants = {
 };
 
 export class ZipFile {
-	constructor(_data) {
-		this.data = new BA(_data, Endian.LITTLE);
+	constructor(data) {
+		this.data = new BA(data, Endian.LITTLE);
 		this.buf = undefined; // ByteArray
 		this.entryList = []; // Array
 		this.entryTable = {}; // Dict
@@ -34,8 +34,8 @@ export class ZipFile {
 
 		this.buf = new BA(this.data.data, Endian.LITTLE);
 		/* Read entries: read end */
-		var b = new BA();
-		b.endian = Endian.LITTLE;
+		var b = new BA(undefined, Endian.LITTLE);
+		//b.endian = Endian.LITTLE;
 		/* Read entries: find end */
 		var i = this.buf.length - ZipConstants.ENDHDR; // END header size
 		var n = Math.max(0, i - 0xffff); // 0xffff is max zip file comment length
@@ -47,6 +47,7 @@ export class ZipFile {
 			if(this.buf.readUnsignedInt() == 0x06054b50) zipEnd = i;
 		}
 		if(zipEnd === null) throw 'find end: invalid zip '+ zipEnd;
+
 		b.data = this.buf.readBytes(zipEnd, ZipConstants.ENDHDR);
 		b.position = ZipConstants.ENDTOT; // total number of entries
 		this.entryList = new Array(b.readUnsignedShort());

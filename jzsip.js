@@ -179,10 +179,10 @@
 	};
 
 	var ZipFile = (function () {
-		function ZipFile(_data) {
+		function ZipFile(data) {
 			_classCallCheck(this, ZipFile);
 
-			this.data = new _BAJs.BA(_data, Endian.LITTLE);
+			this.data = new _BAJs.BA(data, Endian.LITTLE);
 			this.buf = undefined; // ByteArray
 			this.entryList = []; // Array
 			this.entryTable = {}; // Dict
@@ -191,8 +191,8 @@
 
 			this.buf = new _BAJs.BA(this.data.data, Endian.LITTLE);
 			/* Read entries: read end */
-			var b = new _BAJs.BA();
-			b.endian = Endian.LITTLE;
+			var b = new _BAJs.BA(undefined, Endian.LITTLE);
+			//b.endian = Endian.LITTLE;
 			/* Read entries: find end */
 			var i = this.buf.length - ZipConstants.ENDHDR; // END header size
 			var n = Math.max(0, i - 0xffff); // 0xffff is max zip file comment length
@@ -204,6 +204,7 @@
 				if (this.buf.readUnsignedInt() == 0x06054b50) zipEnd = i;
 			}
 			if (zipEnd === null) throw 'find end: invalid zip ' + zipEnd;
+
 			b.data = this.buf.readBytes(zipEnd, ZipConstants.ENDHDR);
 			b.position = ZipConstants.ENDTOT; // total number of entries
 			this.entryList = new Array(b.readUnsignedShort());
@@ -554,16 +555,10 @@
 		function BA(byteData, endianType) {
 			_classCallCheck(this, BA);
 
-			this.bytes = '';
-			this.len = 0;
+			this.bytes = byteData || '';
+			this.endian = endianType || 0;
+			this.len = byteData ? byteData.length : 0;
 			this.pos = 0;
-			this.endian = 0;
-
-			if (byteData) {
-				this.bytes = byteData || '';
-				this.endian = endianType !== undefined ? endianType : this.endian;
-				this.len = byteData.length;
-			}
 
 			this.isBA = typeof byteData != 'string' && byteData !== undefined;
 		}

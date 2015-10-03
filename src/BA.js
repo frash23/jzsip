@@ -2,16 +2,10 @@ var Endian = {BIG : 0,LITTLE : 1};
 
 export class BA {
 	constructor(byteData, endianType) {
-		this.bytes = '';
-		this.len = 0;
+		this.bytes = byteData || '';
+		this.endian = endianType || 0;
+		this.len = byteData? byteData.length : 0;
 		this.pos = 0;
-		this.endian = 0;
-
-		if (byteData) {
-			this.bytes = byteData || '';
-			this.endian = endianType !== undefined ? endianType : this.endian;
-			this.len = byteData.length;
-		}
 
 		this.isBA = typeof byteData != 'string' && byteData !== undefined;
 	}
