@@ -19,7 +19,7 @@ export class Inflater {
 	bits(need) {
 		var val = this.bitbuf;
 		while(this.bitcnt < need) {
-			if(this.incnt === this.inbuf.length) throw 'available inflate data did not terminate';
+			if(this.incnt === this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
 			val |= this.inbuf.readByteAt(this.incnt++) << this.bitcnt;
 			this.bitcnt += 8;
 		}
@@ -30,9 +30,9 @@ export class Inflater {
 
 	construct(h, length, n) {
 		var offs = [];
-		for (var len = 0; len <= MAXBITS; len++) h.count[len] = 0;
-		for (var symbol = 0; symbol < n; symbol++) h.count[length[symbol]]++;
-		if(h.count[0] == n) return 0;
+		for(var len = 0; len <= MAXBITS; len++) h.count[len] = 0;
+		for(var symbol = 0; symbol < n; symbol++) h.count[length[symbol]]++;
+		if(h.count[0] === n) return 0;
 		var left = 1;
 		for(len = 1; len <= MAXBITS; len++) {
 			left <<= 1;
@@ -41,8 +41,7 @@ export class Inflater {
 		}
 		offs[1] = 0;
 		for(len = 1; len < MAXBITS; len++) offs[len + 1] = offs[len] + h.count[len];
-		for(symbol = 0; symbol < n; symbol++)
-			if(length[symbol] !== 0) h.symbol[offs[length[symbol]]++] = symbol;
+		for(symbol = 0; symbol < n; symbol++) if(length[symbol] !== 0) h.symbol[offs[length[symbol]]++] = symbol;
 		return left;
 	}
 
@@ -64,18 +63,15 @@ export class Inflater {
 		do {
 			var symbol = this.decode(this.lencode);
 			if(symbol < 0) return symbol;
-			if(symbol < 256) {
-				buf.position = buf.length;
-				buf.writeByte(symbol);
-			}
+			if(symbol < 256) { buf.position = buf.length; buf.writeByte(symbol); }
 			else if(symbol > 256) {
 				symbol -= 257;
-				if(symbol >= 29) throw "invalid literal/length or distance code in fixed or dynamic block";
+				if(symbol >= 29) throw 'Inflater: invalid literal/length or distance code in fixed or dynamic block';
 				var len = LENS[symbol] + this.bits(LEXT[symbol]);
 				symbol = this.decode(this.distcode);
 				if(symbol < 0) return symbol;
 				var dist = DISTS[symbol] + this.bits(DEXT[symbol]);
-				if(dist > buf.length) throw "distance is too far back in fixed or dynamic block";
+				if(dist > buf.length) throw 'Inflater: distance is too far back in fixed or dynamic block';
 				buf.position = buf.length;
 				while(len--) buf.writeByte(buf.readByteAt(buf.length - dist));
 			}
@@ -86,12 +82,12 @@ export class Inflater {
 	stored(buf) {
 		this.bitbuf = 0;
 		this.bitcnt = 0;
-		if(this.incnt + 4 > this.inbuf.length) throw 'available inflate data did not terminate';
+		if(this.incnt + 4 > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
 		var len = this.inbuf[this.incnt++];
 		len |= this.inbuf[this.incnt++] << 8;
 		if(this.inbuf[this.incnt++] != (~len & 0xff) || this.inbuf[this.incnt++] != ((~len >> 8) & 0xff))
-			throw "stored block length did not match one's complement";
-		if(this.incnt + len > this.inbuf.length) throw 'available inflate data did not terminate';
+			throw 'Inflater: stored block length did not match one\'s complement';
+		if(this.incnt + len > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
 		while(len--) buf[buf.length] = this.inbuf[this.incnt++];
 	}
 
@@ -113,34 +109,33 @@ export class Inflater {
 			nlen = this.bits(5) + 257,
 			ndist = this.bits(5) + 1,
 			ncode = this.bits(4) + 4;
-		if(nlen > MAXLCODES || ndist > MAXDCODES) throw "dynamic block code description: too many length or distance codes";
+		if(nlen > MAXLCODES || ndist > MAXDCODES) throw 'Inflater: dynamic block code description: too many length or distance codes';
 		for(var index = 0; index < ncode; index++) lengths[order[index]] = this.bits(3);
 		for(; index < 19; index++) lengths[order[index]] = 0;
 		var err = this.construct(this.lencode, lengths, 19);
-		if(err !== 0) throw "dynamic block code description: code lengths codes incomplete";
+		if(err !== 0) throw 'Inflater: dynamic block code description: code lengths codes incomplete';
 		index = 0;
 		while(index < nlen + ndist) {
 			var symbol = this.decode(this.lencode), len;
 			if(symbol < 16) lengths[index++] = symbol;
 			else {
 				len = 0;
-				if(symbol == 16) {
-					if(index === 0) throw "dynamic block code description: repeat lengths with no first length";
+				if(symbol === 16) {
+					if(index === 0) throw 'Inflater: dynamic block code description: repeat lengths with no first length';
 					len = lengths[index - 1];
 					symbol = 3 + this.bits(2);
 				}
-				else if(symbol == 17) symbol = 3 + this.bits(3);
+				else if(symbol === 17) symbol = 3 + this.bits(3);
 				else symbol = 11 + this.bits(7);
-				if(index + symbol > nlen + ndist)
-					throw "dynamic block code description: repeat more than specified lengths";
+				if(index + symbol > nlen + ndist) throw 'Inflater: dynamic block code description: repeat more than specified lengths';
 				while(symbol--) lengths[index++] = len;
 			}
 		}
 
 		err = this.construct(this.lencode, lengths, nlen);
-		if(err < 0 || (err > 0 && nlen - this.lencode.count[0] != 1)) throw "dynamic block code description: invalid literal/length code lengths";
+		if(err < 0 || (err > 0 && nlen - this.lencode.count[0] !== 1)) throw 'Inflater: dynamic block code description: invalid literal/length code lengths';
 		err = this.construct(this.distcode, lengths.slice(nlen), ndist);
-		if(err < 0 || (err > 0 && ndist - this.distcode.count[0] != 1)) throw "dynamic block code description: invalid distance code lengths";
+		if(err < 0 || (err > 0 && ndist - this.distcode.count[0] !== 1)) throw 'Inflater: dynamic block code description: invalid distance code lengths';
 		return err;
 	}
 
@@ -151,18 +146,18 @@ export class Inflater {
 
 	inflate(buf) {
 		this.incnt = this.bitbuf = this.bitcnt = 0;
-		var err = 0;
+		var err;
 		do {
 			var last = this.bits(1);
 			var type = this.bits(2);
 			
 			if(type === 0) stored(buf); // uncompressed block
-			else if(type == 3) throw 'invalid block type (type == 3)';
+			else if(type === 3) throw 'Inflater: invalid block type (type === 3)';
 			else { // compressed block
 				this.lencode = {count:[], symbol:[]};
 				this.distcode = {count:[], symbol:[]};
-				if(type == 1) this.constructFixedTables();
-				else if(type == 2) err = this.constructDynamicTables();
+				if(type === 1) this.constructFixedTables();
+				else if(type === 2) err = this.constructDynamicTables();
 				if(err !== 0) return err;
 				err = this.codes(buf);
 			}
