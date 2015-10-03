@@ -49,4 +49,4 @@ function onZipLoad(zip) {
 
 
 For live demos, check the `test` folder.
-Also hosted [here](about:blank). (TODO: Add hosted example)
+Also hosted [here](http://dev.pj.gy/jzsip/test/). (TODO: Add hosted example)
