@@ -50,34 +50,36 @@
 
 	var _ZipFileJs = __webpack_require__(2);
 
+	var _BAJs = __webpack_require__(4);
+
+	window.BA = _BAJs.BA;
+
 	window.jzsip = window.jzsip || {
 		Zip: _ZipFileJs.ZipFile,
-		loadZip: loadZip
-	};
+		loadZip: function loadZip(url, cb) {
+			var isIE = false;
 
-	function loadZip(url, cb) {
-		var isIE = false;
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', url, true);
+			xhr.addEventListener('load', function () {
+				var data = !isIE ? xhr.responseText : BinArr(xhr.responseBody).toArray();
+				var zip = new _ZipFileJs.ZipFile(data);
+				cb(zip);
+			}, false);
 
-		var xhr = new XMLHttpRequest();
-		xhr.open('GET', url, true);
-		xhr.addEventListener('load', function () {
-			var data = !isIE ? xhr.responseText : BinArr(xhr.responseBody).toArray();
-			var zip = new _ZipFileJs.ZipFile(data);
-			cb(zip);
-		}, false);
+			if (xhr.overrideMimeType) {
+				xhr.overrideMimeType('text/plain; charset=x-user-defined');
+			} else {
+				/* 690865979..toString(30) === 'script'. If you inline the script in HTML, it'd break if the script tags where in plain text */
+				var vbScript = '<' + 690865979..toString(30) + ' type="text/vbscript"><!--\nFunction BinArr(Bin)Dim i:ReDim byteArray(LenB(Bin)):For i=1 To LenB(Bin):byteArray(i-1)=AscB(MidB(Bin,i,1)):Next:BinArr=byteArray End Function\n--></' + 690865979..toString(30) + '>';
+				document.write(vbScript); /* It's okay to use cancerous code if it's only executed on cancerous browsers, right? */
+				xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
+				isIE = true;
+			}
 
-		if (xhr.overrideMimeType) {
-			xhr.overrideMimeType('text/plain; charset=x-user-defined');
-		} else {
-			/* 690865979..toString(30) === 'script'. If you inline the script in HTML, it'd break if the script tags where in plain text */
-			var vbScript = '<' + 690865979..toString(30) + ' type="text/vbscript"><!--\nFunction BinArr(Bin)Dim i:ReDim byteArray(LenB(Bin)):For i=1 To LenB(Bin):byteArray(i-1)=AscB(MidB(Bin,i,1)):Next:BinArr=byteArray End Function\n--></' + 690865979..toString(30) + '>';
-			document.write(vbScript); /* It's okay to use cancerous code if it's only executed on cancerous browsers, right? */
-			xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
-			isIE = true;
+			xhr.send();
 		}
-
-		xhr.send();
-	}
+	};
 
 /***/ },
 /* 1 */
@@ -187,26 +189,26 @@
 			this.locOffsetTable = {}; // Dict
 			var zipEnd = null;
 
-			this.buf = new _BAJs.BA(this.data.data(), Endian.LITTLE);
+			this.buf = new _BAJs.BA(this.data.data, Endian.LITTLE);
 			/* Read entries: read end */
 			var b = new _BAJs.BA();
-			b.endian(Endian.LITTLE);
+			b.endian = Endian.LITTLE;
 			/* Read entries: find end */
-			var i = this.buf.length() - ZipConstants.ENDHDR; // END header size
+			var i = this.buf.length - ZipConstants.ENDHDR; // END header size
 			var n = Math.max(0, i - 0xffff); // 0xffff is max zip file comment length
 			for (; i >= n; i--) {
-				this.buf.position(i);
+				this.buf.position = i;
 				if (this.buf.readByte() != 0x50) continue; // quick check that the byte is 'P'
-				this.buf.position(i);
+				this.buf.position = i;
 				// "PK\005\006" ¬
 				if (this.buf.readUnsignedInt() == 0x06054b50) zipEnd = i;
 			}
 			if (zipEnd === null) throw 'find end: invalid zip ' + zipEnd;
-			b.data(this.buf.readBytes(zipEnd, ZipConstants.ENDHDR));
-			b.position(ZipConstants.ENDTOT); // total number of entries
+			b.data = this.buf.readBytes(zipEnd, ZipConstants.ENDHDR);
+			b.position = ZipConstants.ENDTOT; // total number of entries
 			this.entryList = new Array(b.readUnsignedShort());
-			b.position(ZipConstants.ENDOFF); // offset of first CEN header
-			this.buf.position(b.readUnsignedInt());
+			b.position = ZipConstants.ENDOFF; // offset of first CEN header
+			this.buf.position = b.readUnsignedInt();
 			/* Read entries: main */
 			this.entryTable = {};
 			this.locOffsetTable = {};
@@ -216,18 +218,18 @@
 				if (tmpbuf.readUnsignedInt() != ZipConstants.CENSIG) // "PK\005\006"
 					throw 'readEntries::Invalid CEN header (bad signature)';
 				// handle filename
-				tmpbuf.position(28);
+				tmpbuf.position = 28;
 				var len = tmpbuf.readUnsignedShort();
 				if (len === 0) throw "missing entry name";
 				var e = new _ZipEntryJs.ZipEntry(this.buf.readUTFBytes(len));
 				// handle extra field
 				len = tmpbuf.readUnsignedShort();
 				e.extra = new _BAJs.BA();
-				if (len > 0) e.extra.data(this.buf.readBytes(len));
+				if (len > 0) e.extra.data = this.buf.readBytes(len);
 				// handle file comment
 				this.buf.move(tmpbuf.readUnsignedShort());
 				// now get the remaining fields for the entry
-				tmpbuf.position(6); // version needed to extract
+				tmpbuf.position = 6; // version needed to extract
 				e.version = tmpbuf.readUnsignedShort();
 				e.flag = tmpbuf.readUnsignedShort();
 				if ((e.flag & 1) == 1) throw "readEntries::Encrypted ZIP entry not supported";
@@ -240,7 +242,7 @@
 				this.entryList[i] = e;
 				this.entryTable[e.name] = e;
 				// loc offset
-				tmpbuf.position(42); // LOC HEADER
+				tmpbuf.position = 42; // LOC HEADER
 				this.locOffsetTable[e.name] = tmpbuf.readUnsignedInt();
 			}
 		}
@@ -253,12 +255,12 @@
 		}, {
 			key: 'getInput',
 			value: function getInput(entry) {
-				this.buf.position(this.locOffsetTable[entry.name] + 30 - 2);
+				this.buf.position = this.locOffsetTable[entry.name] + 30 - 2;
 				var len = this.buf.readShort();
 				this.buf.move(entry.name.length + len);
 				var b1 = new _BAJs.BA();
 				if (entry.compressedSize > 0) {
-					b1.data(this.buf.readBytes(entry.compressedSize));
+					b1.data = this.buf.readBytes(entry.compressedSize);
 				}
 				switch (entry.method) {
 					case 0:
@@ -271,7 +273,6 @@
 						var inflater = new _InflaterJs.Inflater();
 						inflater.setInput(b1);
 						inflater.inflate(b2);
-						b2.position(0);
 						return b2;
 						break;
 					default:
@@ -285,8 +286,7 @@
 				if (!entry) throw 'Unable to get entry ' + filename + ' in ZIP';
 				var data = this.getInput(entry);
 				if (data) {
-					data.position(0);
-					var utftext = data.readBytes(0, data.length());
+					var utftext = data.readBytes(0, data.length);
 					if (utftext.charCodeAt(0) == 0xef && utftext.charCodeAt(1) == 0xbb && utftext.charCodeAt(2) == 0xbf) {
 						utftext = utftext.substr(3);
 						var string = '';
@@ -422,7 +422,7 @@
 					var symbol = this.decode(this.lencode);
 					if (symbol < 0) return symbol;
 					if (symbol < 256) {
-						buf.position(buf.length());
+						buf.position = buf.length;
 						buf.writeByte(symbol);
 					} else if (symbol > 256) {
 						symbol -= 257;
@@ -431,9 +431,9 @@
 						symbol = this.decode(this.distcode);
 						if (symbol < 0) return symbol;
 						var dist = DISTS[symbol] + this.bits(DEXT[symbol]);
-						if (dist > buf.length()) throw "distance is too far back in fixed or dynamic block";
-						buf.position(buf.length());
-						while (len--) buf.writeByte(buf.readByteAt(buf.length() - dist));
+						if (dist > buf.length) throw "distance is too far back in fixed or dynamic block";
+						buf.position = buf.length;
+						while (len--) buf.writeByte(buf.readByteAt(buf.length - dist));
 					}
 				} while (symbol != 256);
 				return 0;
@@ -447,7 +447,7 @@
 				var len = this.inbuf[this.incnt++];
 				len |= this.inbuf[this.incnt++] << 8;
 				if (this.inbuf[this.incnt++] != (~len & 0xff) || this.inbuf[this.incnt++] != (~len >> 8 & 0xff)) throw "stored block length did not match one's complement";
-				if (this.incnt + len > this.inbuf.length()) throw 'available inflate data did not terminate';
+				if (this.incnt + len > this.inbuf.length) throw 'available inflate data did not terminate';
 				while (len--) buf[buf.length] = this.inbuf[this.incnt++];
 			}
 		}, {
@@ -502,8 +502,7 @@
 			key: "setInput",
 			value: function setInput(buf) {
 				this.inbuf = buf;
-				this.inbuf.endian(Endian.LITTLE);
-				this.inbuf.position(0);
+				this.inbuf.endian = Endian.LITTLE;
 			}
 		}, {
 			key: "inflate",
@@ -561,11 +560,12 @@
 			this._bytes = '';
 			this._len = 0;
 			this._pos = 0;
-			this._endian = 0;
+			this.endian = 0;
+			this._test = 0;
 
 			if (byteData) {
 				this._bytes = byteData || '';
-				this._endian = endianType !== undefined ? endianType : this._endian;
+				this.endian = endianType !== undefined ? endianType : this.endian;
 				this._len = byteData.length;
 			}
 
@@ -573,41 +573,14 @@
 		}
 
 		_createClass(BA, [{
-			key: 'position',
-			value: function position(val) {
-				if (val) this._pos = val;else return this._pos;
-			}
-		}, {
 			key: 'move',
 			value: function move(val) {
 				this._pos += val;
 			}
 		}, {
-			key: 'bytesAvailable',
-			value: function bytesAvailable() {
-				return this._len - this._pos;
-			}
-		}, {
-			key: 'length',
-			value: function length() {
-				return this._len;
-			}
-		}, {
-			key: 'endian',
-			value: function endian(val) {
-				if (val) this._endian = val;else return this._endian;
-			}
-		}, {
-			key: 'data',
-			value: function data(val) {
-				if (val) {
-					this._bytes = val || '';this._len = this._bytes.length;this.isBA = typeof val != 'string' && val !== undefined;
-				} else return this._bytes;
-			}
-		}, {
 			key: 'readByte',
 			value: function readByte() {
-				if (this.bytesAvailable() === 0) {
+				if (this.bytesAvailable === 0) {
 					warn("readByte::End of stream!");
 				}
 				return this.isBA ? this._bytes[this._pos++] & 0xFF : this._bytes.charCodeAt(this._pos++) & 0xFF;
@@ -668,12 +641,12 @@
 		}, {
 			key: 'readUnsignedInt',
 			value: function readUnsignedInt() {
-				if (this.bytesAvailable() < 4) {
+				if (this.bytesAvailable < 4) {
 					throw "End of stream!";
 				}
 				var p = 0,
 				    x = 0;
-				if (this._endian == Endian.BIG) {
+				if (this.endian == Endian.BIG) {
 					p = (this._pos += 4) - 4;
 					if (this.isBA) {
 						x = (this._bytes[p] & 0xFF) << 24 | (this._bytes[++p] & 0xFF) << 16 | (this._bytes[++p] & 0xFF) << 8 | this._bytes[++p] & 0xFF;
@@ -689,11 +662,11 @@
 		}, {
 			key: 'readUnsignedShort',
 			value: function readUnsignedShort() {
-				if (this.bytesAvailable() < 2) {
+				if (this.bytesAvailable < 2) {
 					throw "End of stream!";
 				}
 				var p = 0;
-				if (this._endian == Endian.BIG) {
+				if (this.endian == Endian.BIG) {
 					p = (this._pos += 2) - 2;
 					if (this.isBA) {
 						return (this._bytes[p] & 0xFF) << 8 | this._bytes[++p] & 0xFF;
@@ -708,12 +681,12 @@
 		}, {
 			key: 'readShort',
 			value: function readShort() {
-				if (this.bytesAvailable() < 2) {
+				if (this.bytesAvailable < 2) {
 					throw "End of stream!";
 				}
 				var p = 0,
 				    x = 0;
-				if (this._endian == Endian.BIG) {
+				if (this.endian == Endian.BIG) {
 					p = (this._pos += 2) - 2;
 					if (this.isBA) {
 						x = (this._bytes[p] & 0xFF) << 8 | this._bytes[++p] & 0xFF;
@@ -735,6 +708,32 @@
 					output += String.fromCharCode(this.readByte());
 				}
 				return output;
+			}
+		}, {
+			key: 'position',
+			set: function set(val) {
+				this._pos = val;
+			},
+			get: function get() {
+				return this._pos;
+			}
+		}, {
+			key: 'bytesAvailable',
+			get: function get() {
+				return this._len - this._pos;
+			}
+		}, {
+			key: 'length',
+			get: function get() {
+				return this._len;
+			}
+		}, {
+			key: 'data',
+			set: function set(val) {
+				this._bytes = val || '';this._len = this._bytes.length;this.isBA = typeof val != 'string' && val !== undefined;
+			},
+			get: function get() {
+				return this._bytes;
 			}
 		}]);
 

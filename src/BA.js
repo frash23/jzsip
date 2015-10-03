@@ -6,26 +6,28 @@ export class BA {
 		this._bytes = '';
 		this._len = 0;
 		this._pos = 0;
-		this._endian = 0;
+		this.endian = 0;
+		this._test = 0;
 
 		if (byteData) {
 			this._bytes = byteData || '';
-			this._endian = endianType !== undefined ? endianType : this._endian;
+			this.endian = endianType !== undefined ? endianType : this.endian;
 			this._len = byteData.length;
 		}
 
 		this.isBA = typeof byteData != 'string' && byteData !== undefined;
 	}
 
-	position(val) { if (val) this._pos = val; else return this._pos; }
-	move(val) { this._pos += val}
-	bytesAvailable() { return this._len - this._pos; }
-	length() { return this._len; }
-	endian(val) { if (val) this._endian = val; else return this._endian; }
-	data(val) { if (val) { this._bytes = val || ''; this._len = this._bytes.length; this.isBA = typeof val != 'string' && val !== undefined; } else return this._bytes; }
+	set position(val)		{ this._pos = val; }
+	get position() 		{ return this._pos; }
+	get bytesAvailable()	{ return this._len - this._pos; }
+	get length()			{ return this._len; }
+	set data(val)			{ this._bytes = val || ''; this._len = this._bytes.length; this.isBA = typeof val != 'string' && val !== undefined; }
+	get data()				{ return this._bytes; }
+	move(val) 				{ this._pos += val; }
 
 	readByte() {
-		if (this.bytesAvailable() === 0) { warn("readByte::End of stream!"); }
+		if (this.bytesAvailable === 0) { warn("readByte::End of stream!"); }
 		return this.isBA ? this._bytes[this._pos++] & 0xFF : (this._bytes.charCodeAt(this._pos++) & 0xFF);
 	}
 
@@ -80,9 +82,9 @@ export class BA {
 	}
 
 	readUnsignedInt() {
-		if (this.bytesAvailable() < 4) { throw "End of stream!"; }
+		if (this.bytesAvailable < 4) { throw "End of stream!"; }
 		var p = 0, x = 0;
-		if (this._endian == Endian.BIG) {
+		if (this.endian == Endian.BIG) {
 			 p = (this._pos += 4) - 4;
 			if(this.isBA) {
 				x = ((this._bytes[p] & 0xFF) << 24) | ((this._bytes[++p] & 0xFF) << 16) | ((this._bytes[++p] & 0xFF) << 8) | (this._bytes[++p] & 0xFF);
@@ -99,9 +101,9 @@ export class BA {
 	}
 
 	readUnsignedShort() {
-		if (this.bytesAvailable() < 2) { throw "End of stream!"; }
+		if (this.bytesAvailable < 2) { throw "End of stream!"; }
 		var p = 0;
-		if (this._endian == Endian.BIG) {
+		if (this.endian == Endian.BIG) {
 			p = (this._pos += 2) - 2;
 			if(this.isBA) {
 				return ((this._bytes[p] & 0xFF) << 8) | (this._bytes[++p] & 0xFF);
@@ -117,9 +119,9 @@ export class BA {
 	}
 
 	readShort() {
-		if (this.bytesAvailable() < 2) { throw "End of stream!"; }
+		if (this.bytesAvailable < 2) { throw "End of stream!"; }
 		var p = 0, x = 0;
-		if (this._endian == Endian.BIG) {
+		if (this.endian == Endian.BIG) {
 			p = (this._pos += 2) - 2;
 			if(this.isBA) {
 				x = ((this._bytes[p] & 0xFF) << 8) | (this._bytes[++p] & 0xFF);

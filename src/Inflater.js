@@ -65,7 +65,7 @@ export class Inflater {
 			var symbol = this.decode(this.lencode);
 			if(symbol < 0) return symbol;
 			if(symbol < 256) {
-				buf.position(buf.length());
+				buf.position = buf.length;
 				buf.writeByte(symbol);
 			}
 			else if(symbol > 256) {
@@ -75,9 +75,9 @@ export class Inflater {
 				symbol = this.decode(this.distcode);
 				if(symbol < 0) return symbol;
 				var dist = DISTS[symbol] + this.bits(DEXT[symbol]);
-				if(dist > buf.length()) throw "distance is too far back in fixed or dynamic block";
-				buf.position(buf.length());
-				while(len--) buf.writeByte(buf.readByteAt(buf.length() - dist));
+				if(dist > buf.length) throw "distance is too far back in fixed or dynamic block";
+				buf.position = buf.length;
+				while(len--) buf.writeByte(buf.readByteAt(buf.length - dist));
 			}
 		} while (symbol != 256);
 		return 0;
@@ -91,7 +91,7 @@ export class Inflater {
 		len |= this.inbuf[this.incnt++] << 8;
 		if(this.inbuf[this.incnt++] != (~len & 0xff) || this.inbuf[this.incnt++] != ((~len >> 8) & 0xff))
 			throw "stored block length did not match one's complement";
-		if(this.incnt + len > this.inbuf.length()) throw 'available inflate data did not terminate';
+		if(this.incnt + len > this.inbuf.length) throw 'available inflate data did not terminate';
 		while(len--) buf[buf.length] = this.inbuf[this.incnt++];
 	}
 
@@ -146,8 +146,7 @@ export class Inflater {
 
 	setInput(buf) {
 		this.inbuf = buf;
-		this.inbuf.endian(Endian.LITTLE);
-		this.inbuf.position(0);
+		this.inbuf.endian = Endian.LITTLE;
 	}
 
 	inflate(buf) {
