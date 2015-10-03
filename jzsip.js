@@ -46,8 +46,6 @@
 
 	"use strict";
 
-	/*! Not finished - will be changed around */
-
 	var _ZipEntryJs = __webpack_require__(1);
 
 	var _ZipFileJs = __webpack_require__(2);
@@ -350,7 +348,6 @@
 	var MAXBITS = 15,
 	    MAXLCODES = 286,
 	    MAXDCODES = 30,
-	    MAXCODES = 316,
 	    FIXLCODES = 288,
 	    LENS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258],
 	    LEXT = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0],

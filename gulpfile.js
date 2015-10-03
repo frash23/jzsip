@@ -15,7 +15,14 @@ const WEBPACK_OPTS = {
 };
 
 const UGLIFY_OPTS = {
-	preserveComments: 'some'
+	preserveComments: 'some',
+	maxLineLen: 0,
+	screwIE8: true,
+	mangleProperties: true,
+	compress: {
+		unsafe: true,
+		drop_console: true,
+	}
 };
 
 const DIST_PATH = './';
