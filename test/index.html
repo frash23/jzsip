@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>JzSip test</title>
+   </head>
+
+   <body>
+
+      <script src="../jzsip.js"></script>
+      <script>
+         var xhr = new XMLHttpRequest();
+         xhr.open('GET', 'test.zip', true);
+         xhr.addEventListener('load', function() {
+            var zip = new Zip(this.responseText);
+				testZip(zip);
+         });
+         xhr.overrideMimeType('text/plain; charset=x-user-defined');
+         xhr.send();
+
+			function testZip(zip) {
+				window.zip = zip;
+				alert( zip.getFile('test.txt') );
+				document.body.innerHTML += '<img src="data:image/png;base64,'+ btoa( zip.getFile('images/jzsip.png') ) +'">';
+				document.body.innerHTML += '<h2>The NULL license</h2><p>Loaded from "Licenses/NULL" from test.zip</p>';
+				var NULLParagraph = document.createElement('code');
+				NULLParagraph.innerHTML = zip.getFile('Licenses/NULL').replace(/\n/g, '<br>\n');
+				document.body.appendChild(NULLParagraph);
+			}
+      </script>
+   </body>
+</html>
