@@ -1,148 +1,124 @@
-var warn = function(msg) { throw msg; }
 var Endian = {BIG : 0,LITTLE : 1};
 
 export class BA {
 	constructor(byteData, endianType) {
-		this._bytes = '';
-		this._len = 0;
-		this._pos = 0;
+		this.bytes = '';
+		this.len = 0;
+		this.pos = 0;
 		this.endian = 0;
-		this._test = 0;
 
 		if (byteData) {
-			this._bytes = byteData || '';
+			this.bytes = byteData || '';
 			this.endian = endianType !== undefined ? endianType : this.endian;
-			this._len = byteData.length;
+			this.len = byteData.length;
 		}
 
 		this.isBA = typeof byteData != 'string' && byteData !== undefined;
 	}
 
-	set position(val)		{ this._pos = val; }
-	get position() 		{ return this._pos; }
-	get bytesAvailable()	{ return this._len - this._pos; }
-	get length()			{ return this._len; }
-	set data(val)			{ this._bytes = val || ''; this._len = this._bytes.length; this.isBA = typeof val != 'string' && val !== undefined; }
-	get data()				{ return this._bytes; }
-	move(val) 				{ this._pos += val; }
+	set position(val)		{ this.pos = val; }
+	get position() 		{ return this.pos; }
+	get bytesAvailable()	{ return this.len - this.pos; }
+	get length()			{ return this.len; }
+	set data(val)			{ this.bytes = val || ''; this.len = this.bytes.length; this.isBA = typeof val != 'string' && val !== undefined; }
+	get data()				{ return this.bytes; }
+	move(val) 				{ this.pos += val; }
 
 	readByte() {
-		if (this.bytesAvailable === 0) { warn("readByte::End of stream!"); }
-		return this.isBA ? this._bytes[this._pos++] & 0xFF : (this._bytes.charCodeAt(this._pos++) & 0xFF);
+		if(this.bytesAvailable === 0) throw 'readByte: End of stream!';
+		return this.isBA ? this.bytes[this.pos++] & 0xFF : (this.bytes.charCodeAt(this.pos++) & 0xFF);
 	}
 
-	readByteAt(index) {
-	  if (index < this._len) {
-		  return this.isBA ? this._bytes[index] & 0xFF :this._bytes.charCodeAt(index) & 0xFF
-	  }
-	  return warn("readByteAt::End of stream");
+	readByteAt(i) {
+	  if(i < this.len) return this.isBA ? this.bytes[i] & 0xFF :this.bytes.charCodeAt(i) & 0xFF;
+	  else throw 'readByteAt: End of stream';
 	}
 
 	writeByte(val) {
-		if (this.isBA) {
-			if (this._pos < this._len) {
-				this._bytes[this._pos] = val & 0xFF;
-			} else {
-				this._bytes[this._bytes.length++] = val;
-			}
-			this._pos++;
+		if(this.isBA) {
+			if(this.pos < this.len) this.bytes[this.pos] = val & 0xFF;
+			else this.bytes[this.bytes.length++] = val;
+
+			this.pos++;
 			return;
-		}
-		if (this._pos < this._len) {
-			this._bytes = this._bytes.substr(0, this._pos) + String.fromCharCode(val & 0xFF) + this._bytes.substring(this._pos + 1);
+		} else if (this.pos < this.len) {
+			this.bytes = this.bytes.substr(0, this.pos) + String.fromCharCode(val & 0xFF) + this.bytes.substring(this.pos + 1);
 		} else {
-			this._bytes += String.fromCharCode(val & 0xFF);
-			this._len += 1;
+			this.bytes += String.fromCharCode(val & 0xFF);
+			this.len += 1;
 		}
-		this._pos++;
+
+		this.pos++;
 	}
 
 	readBytes(offset, length) {
-		if (length === undefined) {
-			var p = this._pos;
-			this._pos += offset;
+		var tmp = '', i;
+		if(!length) {
+			var p = this.pos;
+			this.pos += offset;
 			if(this.isBA) {
-				var tmp = '';
-				for (var i = p; i < p + offset; i++) {
-					tmp += String.fromCharCode(this._bytes[i]);
-				}
+				for(i=p; i<p+offset; i++) tmp += String.fromCharCode(this.bytes[i]);
 				return tmp;
-			} else {
-				return this._bytes.substr(p, offset);
-			}
+			} else return this.bytes.substr(p, offset);
+		} else if(this.isBA) {
+			for(i=offset; i<offset+length; i++) tmp += String.fromCharCode(this.bytes[i]);
+			return tmp;
 		}
-		if(this.isBA) {
-			var tmpx = '';
-			for (var j = offset; j < offset + length; j++) {
-				tmpx += String.fromCharCode(this._bytes[j]);
-			}
-			return tmpx;
-		}
-		return this._bytes.substr(offset, length);
+
+		return this.bytes.substr(offset, length);
 	}
 
 	readUnsignedInt() {
-		if (this.bytesAvailable < 4) { throw "End of stream!"; }
-		var p = 0, x = 0;
-		if (this.endian == Endian.BIG) {
-			 p = (this._pos += 4) - 4;
-			if(this.isBA) {
-				x = ((this._bytes[p] & 0xFF) << 24) | ((this._bytes[++p] & 0xFF) << 16) | ((this._bytes[++p] & 0xFF) << 8) | (this._bytes[++p] & 0xFF);
-			} else
-			x =  ((this._bytes.charCodeAt(p) & 0xFF) << 24) | ((this._bytes.charCodeAt(++p) & 0xFF) << 16) | ((this._bytes.charCodeAt(++p) & 0xFF) << 8) | (this._bytes.charCodeAt(++p) & 0xFF);
+		if(this.bytesAvailable < 4) throw 'readUnsignedInt: End of stream!';
+		var p, x;
+		if(this.endian === Endian.BIG) {
+			p = (this.pos += 4) - 4;
+			if(this.isBA) x = ((this.bytes[p] & 0xFF) << 24) | ((this.bytes[++p] & 0xFF) << 16) | ((this.bytes[++p] & 0xFF) << 8) | (this.bytes[++p] & 0xFF);
+			else x = ((this.bytes.charCodeAt(p) & 0xFF) << 24) | ((this.bytes.charCodeAt(++p) & 0xFF) << 16) | ((this.bytes.charCodeAt(++p) & 0xFF) << 8) | (this.bytes.charCodeAt(++p) & 0xFF);
 		} else {
-			p = (this._pos += 4);
-			if(this.isBA) {
-				x =  ((this._bytes[--p] & 0xFF) << 24) | ((this._bytes[--p] & 0xFF) << 16) | ((this._bytes[--p] & 0xFF) << 8) | (this._bytes[--p] & 0xFF);
-			} else
-			x =  ((this._bytes.charCodeAt(--p) & 0xFF) << 24) | ((this._bytes.charCodeAt(--p) & 0xFF) << 16) | ((this._bytes.charCodeAt(--p) & 0xFF) << 8) | (this._bytes.charCodeAt(--p) & 0xFF);
+			p = (this.pos += 4);
+			if(this.isBA) x = ((this.bytes[--p] & 0xFF) << 24) | ((this.bytes[--p] & 0xFF) << 16) | ((this.bytes[--p] & 0xFF) << 8) | (this.bytes[--p] & 0xFF);
+			else x = ((this.bytes.charCodeAt(--p) & 0xFF) << 24) | ((this.bytes.charCodeAt(--p) & 0xFF) << 16) | ((this.bytes.charCodeAt(--p) & 0xFF) << 8) | (this.bytes.charCodeAt(--p) & 0xFF);
 		}
+
 		return x;
 	}
 
 	readUnsignedShort() {
-		if (this.bytesAvailable < 2) { throw "End of stream!"; }
-		var p = 0;
-		if (this.endian == Endian.BIG) {
-			p = (this._pos += 2) - 2;
-			if(this.isBA) {
-				return ((this._bytes[p] & 0xFF) << 8) | (this._bytes[++p] & 0xFF);
-			} else
-			return ((this._bytes.charCodeAt(p) & 0xFF) << 8) | (this._bytes.charCodeAt(++p) & 0xFF);
+		if(this.bytesAvailable < 2) throw 'readUnsignedShort: End of stream!';
+		var p;
+		if(this.endian === Endian.BIG) {
+			p = (this.pos += 2) - 2;
+			if(this.isBA) return ((this.bytes[p] & 0xFF) << 8) | (this.bytes[++p] & 0xFF);
+			else return ((this.bytes.charCodeAt(p) & 0xFF) << 8) | (this.bytes.charCodeAt(++p) & 0xFF);
 		} else {
-			p = (this._pos += 2);
-			if(this.isBA) {
-				return ((this._bytes[--p] & 0xFF) << 8) | (this._bytes[--p] & 0xFF);
-			} else
-			return ((this._bytes.charCodeAt(--p) & 0xFF) << 8) | (this._bytes.charCodeAt(--p) & 0xFF);
+			p = (this.pos += 2);
+			if(this.isBA) return ((this.bytes[--p] & 0xFF) << 8) | (this.bytes[--p] & 0xFF);
+			else return ((this.bytes.charCodeAt(--p) & 0xFF) << 8) | (this.bytes.charCodeAt(--p) & 0xFF);
 		}
 	}
 
 	readShort() {
-		if (this.bytesAvailable < 2) { throw "End of stream!"; }
-		var p = 0, x = 0;
-		if (this.endian == Endian.BIG) {
-			p = (this._pos += 2) - 2;
-			if(this.isBA) {
-				x = ((this._bytes[p] & 0xFF) << 8) | (this._bytes[++p] & 0xFF);
-			} else
-			x = ((this._bytes.charCodeAt(p) & 0xFF) << 8) | (this._bytes.charCodeAt(++p) & 0xFF);
+		if(this.bytesAvailable < 2) throw 'readShort: End of stream!';
+		var p, x;
+		if(this.endian == Endian.BIG) {
+			p = (this.pos += 2) - 2;
+			if(this.isBA) x = ((this.bytes[p] & 0xFF) << 8) | (this.bytes[++p] & 0xFF);
+			else x = ((this.bytes.charCodeAt(p) & 0xFF) << 8) | (this.bytes.charCodeAt(++p) & 0xFF);
 		} else {
-			p = (this._pos += 2);
-			if(this.isBA) {
-				x = ((this._bytes[--p] & 0xFF) << 8) | (this._bytes[--p] & 0xFF);
-			} else
-			x = ((this._bytes.charCodeAt(--p) & 0xFF) << 8) | (this._bytes.charCodeAt(--p) & 0xFF);
+			p = (this.pos += 2);
+			if(this.isBA) x = ((this.bytes[--p] & 0xFF) << 8) | (this.bytes[--p] & 0xFF);
+			else x = ((this.bytes.charCodeAt(--p) & 0xFF) << 8) | (this.bytes.charCodeAt(--p) & 0xFF);
 		}
-		return (x >= 32768) ? x - 65536 : x;
+
+		return x>=32768? x - 65536 : x;
 	}
 
 	readUTFBytes(readLength) {
 		readLength = readLength || 0;
 		var output = '';
-		for (var i = 0; i < readLength; i++) {
-			output += String.fromCharCode(this.readByte());
-		}
+		for (var i=0; i<readLength; i++) output += String.fromCharCode( this.readByte() );
+		
 		return output;
 	}
 };
