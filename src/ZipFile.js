@@ -39,14 +39,14 @@ export class ZipFile {
 		/* Read entries: find end */
 		var i = this.buf.length() - ZipConstants.ENDHDR; // END header size
 		var n = Math.max(0, i - 0xffff); // 0xffff is max zip file comment length
-		for(i; i >= n; i--) {
+		for(; i >= n; i--) {
 			this.buf.position(i);
 			if(this.buf.readByte() != 0x50) continue; // quick check that the byte is 'P'
 			this.buf.position(i);
 			// "PK\005\006" ¬
 			if(this.buf.readUnsignedInt() == 0x06054b50) zipEnd = i;
 		}
-		if(zipEnd === null) throw 'find end: invalid zip '+zipEnd;
+		if(zipEnd === null) throw 'find end: invalid zip '+ zipEnd;
 		b.data(this.buf.readBytes(zipEnd, ZipConstants.ENDHDR));
 		b.position(ZipConstants.ENDTOT); // total number of entries
 		this.entryList = new Array(b.readUnsignedShort());

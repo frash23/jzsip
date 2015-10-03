@@ -52,9 +52,33 @@
 
 	var _ZipFileJs = __webpack_require__(2);
 
-	var Endian = { BIG: 0, LITTLE: 1 };
+	window.jzsip = window.jzsip || {
+		Zip: _ZipFileJs.ZipFile,
+		loadZip: loadZip
+	};
 
-	window.Zip = _ZipFileJs.ZipFile;
+	function loadZip(url, cb) {
+		var isIE = false;
+
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', url, true);
+		xhr.addEventListener('load', function () {
+			var data = !isIE ? xhr.responseText : BinaryToArray(xhr.responseBody).toArray();
+			var zip = new _ZipFileJs.ZipFile(data);
+			cb(zip);
+		}, false);
+
+		if (xhr.overrideMimeType) {
+			xhr.overrideMimeType('text/plain; charset=x-user-defined');
+		} else {
+			var vbScript = '\n\t\t\t<script type="text/vbscript">\n\t\t\t\t<!--\n\t\t\t\tFunction BinaryToArray(Binary)\n\t\t\t\t  Dim i\n\t\t\t\t  ReDim byteArray(LenB(Binary))\n\t\t\t\t  For i = 1 To LenB(Binary)\n\t\t\t\t\t byteArray(i-1) = AscB(MidB(Binary, i, 1))\n\t\t\t\t  Next\n\t\t\t\t  BinaryToArray = byteArray\n\t\t\t\tEnd Function\n\t\t\t\t-->\n\t\t\t</script>';
+			document.write(vbScript); /* It's okay to use cancerous code if it's only executed on cancerous browsers, right? */
+			xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
+			isIE = true;
+		}
+
+		xhr.send();
+	}
 
 /***/ },
 /* 1 */
@@ -171,7 +195,7 @@
 			/* Read entries: find end */
 			var i = this.buf.length() - ZipConstants.ENDHDR; // END header size
 			var n = Math.max(0, i - 0xffff); // 0xffff is max zip file comment length
-			for (i; i >= n; i--) {
+			for (; i >= n; i--) {
 				this.buf.position(i);
 				if (this.buf.readByte() != 0x50) continue; // quick check that the byte is 'P'
 				this.buf.position(i);
