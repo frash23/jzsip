@@ -37,7 +37,7 @@ function onZipLoad() {
 	alert( myZip.getFile('text.txt') );
 }
 ```
-However it gets messy if you need IE9 support.
+However it gets messy if you need IE9 and IE10 support.
 Luckily jzsip provides a method to make it easy:
 ```
 jzsip.loadZip('myFiles.zip', onZipLoad);
