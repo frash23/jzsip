@@ -2,12 +2,27 @@
 <html>
    <head>
       <title>JzSip test</title>
+		<style>
+			h1			{ font-variant: small-caps }
+		</style>
    </head>
 
    <body>
+		<img id="logo" title="This image was loaded from test.zip!">
+		<h1>JzSip</h2>
+		<p>
+			A small (5KB!) library for reading files from ZIP archives - compression supported! <br>
+			<span class="smallcaps">JzSip</span> is licensed under the <a href="https://github.com/frash23/jzsip/blob/master/LICENSE">MIT License</a>. I'm not very strict when it comes to this, if you think another license is more suitable, please do <a href="https://github.com/frash23/jzsip/issues/new">open an issue</a> on the GitHub issue tracker! <br>
+			<br>
+			Below is my satirical NULL license. <a id="licenseLink" href="javascript:void(0)">Click here to swap it out with GPLv3</a> (read from test.zip!).
+		</p>
+
+		<h2 id="licenseTitle">NULL - No Use License, Literally</h2>
+		<code id="licenseText">Loading...</code>
 
       <script src="../jzsip.min.js"></script>
       <script>
+			function $(sel) { return Array.prototype.slice.call( document.querySelectorAll(sel) ); }
 			jzsip.loadZip('test.zip', handleZip);
 			/*![Base64.js](https://github.com/davidchambers/Base64.js),
 			 * only here for IE9 compatiability in the example.
@@ -19,11 +34,13 @@
 
 				window.zip = zip;
 				alert( zip.getFile('test.txt') );
-				document.body.innerHTML += '<img src="data:image/png;base64,'+ btoa( zip.getFile('images/jzsip.png') ) +'">';
-				document.body.innerHTML += '<h2>The NULL license</h2><p>Loaded from "Licenses/NULL" from test.zip</p>';
-				var NULLParagraph = document.createElement('code');
-				NULLParagraph.innerHTML = zip.getFile('Licenses/NULL').replace(/\n/g, '<br>\n');
-				document.body.appendChild(NULLParagraph);
+				$('#logo')[0].src = 'data:image/png;base64,'+ btoa( zip.getFile('images/jzsip.png') );
+				$('#licenseText')[0].innerHTML = zip.getFile('Licenses/NULL').replace(/\n/g, '<br>\n');
+				$('#licenseLink')[0].addEventListener('click', function(e) {
+					$('#licenseTitle')[0].textContent = 'GPLv3 - General Public License v3';
+					$('#licenseText')[0].innerHTML = zip.getFile('Licenses/GPLv3').replace(/\n/g, '<br>\n');
+					return false;
+				});
 			}
       </script>
    </body>
