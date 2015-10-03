@@ -192,16 +192,15 @@
 			this.buf = new _BAJs.BA(this.data.data, Endian.LITTLE);
 			/* Read entries: read end */
 			var b = new _BAJs.BA(undefined, Endian.LITTLE);
-			//b.endian = Endian.LITTLE;
 			/* Read entries: find end */
 			var i = this.buf.length - ZipConstants.ENDHDR; // END header size
 			var n = Math.max(0, i - 0xffff); // 0xffff is max zip file comment length
 			for (; i >= n; i--) {
 				this.buf.position = i;
-				if (this.buf.readByte() != 0x50) continue; // quick check that the byte is 'P'
+				if (this.buf.readByte() !== 0x50) continue; // quick check that the byte is 'P'
 				this.buf.position = i;
 				// "PK\005\006" ¬
-				if (this.buf.readUnsignedInt() == 0x06054b50) zipEnd = i;
+				if (this.buf.readUnsignedInt() === 0x06054b50) zipEnd = i;
 			}
 			if (zipEnd === null) throw 'find end: invalid zip ' + zipEnd;
 
@@ -211,17 +210,14 @@
 			b.position = ZipConstants.ENDOFF; // offset of first CEN header
 			this.buf.position = b.readUnsignedInt();
 			/* Read entries: main */
-			this.entryTable = {};
-			this.locOffsetTable = {};
 			// read cen entries
-			for (var i = 0; i < this.entryList.length; i++) {
+			for (var i = 0, l = this.entryList.length; i < l; i++) {
 				var tmpbuf = new _BAJs.BA(this.buf.readBytes(ZipConstants.CENHDR), Endian.LITTLE);
-				if (tmpbuf.readUnsignedInt() != ZipConstants.CENSIG) // "PK\005\006"
-					throw 'readEntries::Invalid CEN header (bad signature)';
+				if (tmpbuf.readUnsignedInt() !== ZipConstants.CENSIG) throw 'read entries: Invalid CEN header (bad signature)'; /*PK\005\006*/
 				// handle filename
 				tmpbuf.position = 28;
 				var len = tmpbuf.readUnsignedShort();
-				if (len === 0) throw "missing entry name";
+				if (len === 0) throw 'read entries: missing entry name';
 				var e = new _ZipEntryJs.ZipEntry(this.buf.readUTFBytes(len));
 				// handle extra field
 				len = tmpbuf.readUnsignedShort();
@@ -233,7 +229,7 @@
 				tmpbuf.position = 6; // version needed to extract
 				e.version = tmpbuf.readUnsignedShort();
 				e.flag = tmpbuf.readUnsignedShort();
-				if ((e.flag & 1) == 1) throw "readEntries::Encrypted ZIP entry not supported";
+				if ((e.flag & 1) === 1) throw 'read entries: Encrypted ZIP entry not supported';
 				e.method = tmpbuf.readUnsignedShort();
 				e.dostime = tmpbuf.readUnsignedInt();
 				e.crc = tmpbuf.readUnsignedInt();
@@ -260,14 +256,11 @@
 				var len = this.buf.readShort();
 				this.buf.move(entry.name.length + len);
 				var b1 = new _BAJs.BA();
-				if (entry.compressedSize > 0) {
-					b1.data = this.buf.readBytes(entry.compressedSize);
-				}
+				if (entry.compressedSize > 0) b1.data = this.buf.readBytes(entry.compressedSize);
 				switch (entry.method) {
 					case 0:
-						// STORED
-						return b1;
-						break;
+						return b1; // STORED
+
 					case 8:
 						// DEFLATED
 						var b2 = new _BAJs.BA();
@@ -275,44 +268,44 @@
 						inflater.setInput(b1);
 						inflater.inflate(b2);
 						return b2;
-						break;
+
 					default:
-						throw "zipEntry::getInput::Invalid compression method";
+						throw 'ZipFile: getInput: Invalid compression method';
 				}
 			}
 		}, {
 			key: 'getFile',
 			value: function getFile(filename) {
 				var entry = this.getEntry(filename);
-				if (!entry) throw 'Unable to get entry ' + filename + ' in ZIP';
+				if (!entry) throw 'ZipFile: getFile: Unable to find entry ' + filename;
 				var data = this.getInput(entry);
-				if (data) {
-					var utftext = data.readBytes(0, data.length);
-					if (utftext.charCodeAt(0) == 0xef && utftext.charCodeAt(1) == 0xbb && utftext.charCodeAt(2) == 0xbf) {
-						utftext = utftext.substr(3);
-						var string = '';
-						var c = c1 = c2 = 0;
-						for (var i = 0; i < utftext.length;) {
-							c = utftext.charCodeAt(i);
-							if (c < 128) {
-								string += String.fromCharCode(c);
-								i++;
-							} else if (c > 191 && c < 224) {
-								c2 = utftext.charCodeAt(i + 1);
-								string += String.fromCharCode((c & 31) << 6 | c2 & 63);
-								i += 2;
-							} else {
-								c2 = utftext.charCodeAt(i + 1);
-								c3 = utftext.charCodeAt(i + 2);
-								string += String.fromCharCode((c & 15) << 12 | (c2 & 63) << 6 | c3 & 63);
-								i += 3;
-							}
-						}
+				if (!data) return '';
 
-						utftext = string;
+				var utftext = data.readBytes(0, data.length);
+				if (utftext.charCodeAt(0) === 0xef && utftext.charCodeAt(1) === 0xbb && utftext.charCodeAt(2) === 0xbf) {
+					utftext = utftext.substr(3);
+					var string = '';
+					var c, c1, c2;
+					for (var i = 0, l = utftext.length; i < l;) {
+						c = utftext.charCodeAt(i);
+						if (c < 128) {
+							string += String.fromCharCode(c);i++;
+						} else if (c > 191 && c < 224) {
+							c2 = utftext.charCodeAt(i + 1);
+							string += String.fromCharCode((c & 31) << 6 | c2 & 63);
+							i += 2;
+						} else {
+							c2 = utftext.charCodeAt(i + 1);
+							c3 = utftext.charCodeAt(i + 2);
+							string += String.fromCharCode((c & 15) << 12 | (c2 & 63) << 6 | c3 & 63);
+							i += 3;
+						}
 					}
-					return utftext;
-				} else return '';
+
+					utftext = string;
+				}
+
+				return utftext;
 			}
 		}, {
 			key: 'entries',
@@ -384,7 +377,7 @@
 		}, {
 			key: "construct",
 			value: function construct(h, length, n) {
-				var offs = new Array();
+				var offs = [];
 				for (var len = 0; len <= MAXBITS; len++) h.count[len] = 0;
 				for (var symbol = 0; symbol < n; symbol++) h.count[length[symbol]]++;
 				if (h.count[0] == n) return 0;
@@ -454,7 +447,7 @@
 		}, {
 			key: "constructFixedTables",
 			value: function constructFixedTables() {
-				var lengths = new Array();
+				var lengths = [];
 				// literal/length table
 				for (var symbol = 0; symbol < 144; symbol++) lengths[symbol] = 8;
 				for (; symbol < 256; symbol++) lengths[symbol] = 9;
@@ -467,7 +460,7 @@
 		}, {
 			key: "constructDynamicTables",
 			value: function constructDynamicTables() {
-				var lengths = new Array(),
+				var lengths = [],
 				    order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15],
 				    nlen = this.bits(5) + 257,
 				    ndist = this.bits(5) + 1,
@@ -517,8 +510,8 @@
 					if (type === 0) stored(buf); // uncompressed block
 					else if (type == 3) throw 'invalid block type (type == 3)';else {
 							// compressed block
-							this.lencode = { count: new Array(0), symbol: new Array(0) };
-							this.distcode = { count: new Array(0), symbol: new Array(0) };
+							this.lencode = { count: [], symbol: [] };
+							this.distcode = { count: [], symbol: [] };
 							if (type == 1) this.constructFixedTables();else if (type == 2) err = this.constructDynamicTables();
 							if (err !== 0) return err;
 							err = this.codes(buf);

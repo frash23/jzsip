@@ -29,7 +29,7 @@ export class Inflater {
 	}
 
 	construct(h, length, n) {
-		var offs = new Array();
+		var offs = [];
 		for (var len = 0; len <= MAXBITS; len++) h.count[len] = 0;
 		for (var symbol = 0; symbol < n; symbol++) h.count[length[symbol]]++;
 		if(h.count[0] == n) return 0;
@@ -96,7 +96,7 @@ export class Inflater {
 	}
 
 	constructFixedTables() {
-		var lengths = new Array();
+		var lengths = [];
 		// literal/length table
 		for(var symbol = 0; symbol < 144; symbol++) lengths[symbol] = 8;
 		for(; symbol < 256; symbol++) lengths[symbol] = 9;
@@ -108,7 +108,7 @@ export class Inflater {
 	}
 
 	constructDynamicTables() {
-		var lengths = new Array(),
+		var lengths = [],
 			order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15],
 			nlen = this.bits(5) + 257,
 			ndist = this.bits(5) + 1,
@@ -159,8 +159,8 @@ export class Inflater {
 			if(type === 0) stored(buf); // uncompressed block
 			else if(type == 3) throw 'invalid block type (type == 3)';
 			else { // compressed block
-				this.lencode = {count:new Array(0), symbol:new Array(0)};
-				this.distcode = {count:new Array(0), symbol:new Array(0)};
+				this.lencode = {count:[], symbol:[]};
+				this.distcode = {count:[], symbol:[]};
 				if(type == 1) this.constructFixedTables();
 				else if(type == 2) err = this.constructDynamicTables();
 				if(err !== 0) return err;
