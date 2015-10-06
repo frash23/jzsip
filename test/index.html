@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
    <head>
+		<meta charset="UTF-8">
       <title>JzSip test</title>
 		<style>
 			h1			{ font-variant: small-caps }
@@ -17,8 +18,15 @@
 			Below is my satirical NULL license. <a id="licenseLink" href="javascript:void(0)">Click here to swap it out with GPLv3</a> (read from test.zip!).
 		</p>
 
+		<p>
+			If the blinker below is halted, the main thread is saturated <br>
+			<span id="test"></span>
+		</p>
+
 		<h2 id="licenseTitle">NULL - No Use License, Literally</h2>
 		<code id="licenseText">Loading...</code>
+
+		<audio controls></audio>
 
       <script src="../jzsip.min.js"></script>
       <script>
@@ -34,7 +42,12 @@
 
 				window.zip = zip;
 				alert( zip.getFile('test.txt') );
-				$('#logo')[0].src = 'data:image/png;base64,'+ btoa( zip.getFile('images/jzsip.png') );
+				setInterval(function(){
+					var elem = $('#test')[0];
+					elem.textContent = elem.textContent === '█'? '_' : '█';
+				}, 150);
+				$('#logo')[0].src = 'data:image/png;base64,'+ btoa( zip.getFile('Images/jzsip.png') );
+				$('audio')[0].src = 'data:audio/mp3;base64,'+ btoa( zip.getFile('Audio/TheFatRat - Unity.mp3') );
 				$('#licenseText')[0].innerHTML = zip.getFile('Licenses/NULL').replace(/\n/g, '<br>\n');
 				$('#licenseLink')[0].addEventListener('click', function(e) {
 					$('#licenseTitle')[0].textContent = 'GPLv3 - General Public License v3';

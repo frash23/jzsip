@@ -98,7 +98,9 @@ export class ZipFile {
 		var b1 = new BA();
 		if(entry.compressedSize > 0) b1.data = this.buf.readBytes(entry.compressedSize);
 		switch(entry.method) {
-			case 0: return b1;// STORED
+			case 0: // STORED
+				b1.data = b1.readUTFBytes(b1.length); // Parse as UTF-8
+				return b1;
 
 			case 8: // DEFLATED
 				var b2 = new BA();

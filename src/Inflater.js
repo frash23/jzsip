@@ -83,12 +83,12 @@ export class Inflater {
 		this.bitbuf = 0;
 		this.bitcnt = 0;
 		if(this.incnt + 4 > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
-		var len = this.inbuf[this.incnt++];
-		len |= this.inbuf[this.incnt++] << 8;
-		if(this.inbuf[this.incnt++] != (~len & 0xff) || this.inbuf[this.incnt++] != ((~len >> 8) & 0xff))
-			throw 'Inflater: stored block length did not match one\'s complement';
+		var len = this.inbuf.readByteAt(this.incnt++);
+		len |= this.inbuf.readByteAt(this.incnt++) << 8;
+		if(this.inbuf.readByteAt(this.incnt++) !== (~len & 0xff)
+		|| this.inbuf.readByteAt(this.incnt++) !== ((~len >> 8) & 0xff)) throw 'Inflater: stored block length did not match one\'s complement';
 		if(this.incnt + len > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
-		while(len--) buf[buf.length] = this.inbuf[this.incnt++];
+		while(len--) buf.data = buf.bytes + String.fromCharCode( this.inbuf.readByteAt(this.incnt++) );
 	}
 
 	constructFixedTables() {
@@ -151,7 +151,7 @@ export class Inflater {
 			var last = this.bits(1);
 			var type = this.bits(2);
 			
-			if(type === 0) stored(buf); // uncompressed block
+			if(type === 0) this.stored(buf); // uncompressed block
 			else if(type === 3) throw 'Inflater: invalid block type (type === 3)';
 			else { // compressed block
 				this.lencode = {count:[], symbol:[]};

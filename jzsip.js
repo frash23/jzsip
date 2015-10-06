@@ -259,7 +259,9 @@
 				if (entry.compressedSize > 0) b1.data = this.buf.readBytes(entry.compressedSize);
 				switch (entry.method) {
 					case 0:
-						return b1; // STORED
+						// STORED
+						b1.data = b1.readUTFBytes(b1.length); // Parse as UTF-8
+						return b1;
 
 					case 8:
 						// DEFLATED
@@ -437,11 +439,11 @@
 				this.bitbuf = 0;
 				this.bitcnt = 0;
 				if (this.incnt + 4 > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
-				var len = this.inbuf[this.incnt++];
-				len |= this.inbuf[this.incnt++] << 8;
-				if (this.inbuf[this.incnt++] != (~len & 0xff) || this.inbuf[this.incnt++] != (~len >> 8 & 0xff)) throw 'Inflater: stored block length did not match one\'s complement';
+				var len = this.inbuf.readByteAt(this.incnt++);
+				len |= this.inbuf.readByteAt(this.incnt++) << 8;
+				if (this.inbuf.readByteAt(this.incnt++) !== (~len & 0xff) || this.inbuf.readByteAt(this.incnt++) !== (~len >> 8 & 0xff)) throw 'Inflater: stored block length did not match one\'s complement';
 				if (this.incnt + len > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
-				while (len--) buf[buf.length] = this.inbuf[this.incnt++];
+				while (len--) buf.data = buf.bytes + String.fromCharCode(this.inbuf.readByteAt(this.incnt++));
 			}
 		}, {
 			key: 'constructFixedTables',
@@ -506,7 +508,7 @@
 					var last = this.bits(1);
 					var type = this.bits(2);
 
-					if (type === 0) stored(buf); // uncompressed block
+					if (type === 0) this.stored(buf); // uncompressed block
 					else if (type === 3) throw 'Inflater: invalid block type (type === 3)';else {
 							// compressed block
 							this.lencode = { count: [], symbol: [] };
