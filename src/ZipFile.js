@@ -61,7 +61,7 @@ export class ZipFile {
 			tmpbuf.position = 28;
 			var len = tmpbuf.readUnsignedShort();
 			if(len === 0) throw 'read entries: missing entry name';
-			var e = new ZipEntry( this.buf.readUTFBytes(len) );
+			var e = new ZipEntry( this.buf.readUTFBytesSync(len) );
 			// handle extra field
 			len = tmpbuf.readUnsignedShort();
 			e.extra = new BA();
@@ -91,57 +91,62 @@ export class ZipFile {
 	get size()		{ return this.entryList.length }
 	getEntry(name)	{ return this.entryTable[name]; }
 
-	getInput(entry) {
+	getInput(entry, cb) {
 		this.buf.position = this.locOffsetTable[entry.name] + 30 - 2;
 		var len = this.buf.readShort();
 		this.buf.move(entry.name.length + len);
 		var b1 = new BA();
+		var oldPos = this.buf.pos;
 		if(entry.compressedSize > 0) b1.data = this.buf.readBytes(entry.compressedSize);
 		switch(entry.method) {
 			case 0: // STORED
-				b1.data = b1.readUTFBytes(b1.length); // Parse as UTF-8
-				return b1;
+				this.buf.pos = oldPos;
+				this.buf.readUTFBytes(entry.compressedSize, b=> cb(b)); // Parse as UTF-8
+			break;
 
 			case 8: // DEFLATED
+				this.buf.pos = oldPos;
+				var data = this.buf.readUTFBytesSync(entry.compressedSize);
 				var b2 = new BA();
 				var inflater = new Inflater();
-				inflater.setInput(b1);
-				inflater.inflate(b2);
-				return b2;
+				inflater.setInput(data);
+				inflater.inflate(b2, cb);
+			break;
 
 			default: throw 'ZipFile: getInput: Invalid compression method';
 		}
 	}
 	
-	getFile(filename) {
+	getFile(filename, cb) {
 		var entry = this.getEntry(filename);
 		if(!entry) throw 'ZipFile: getFile: Unable to find entry '+ filename;
-		var data = this.getInput(entry);
-		if(!data) return '';
+		this.getInput(entry, function(data) {
+			if(!data) return cb('');
 
-		var utftext = data.readBytes(0, data.length);
-		if(utftext.charCodeAt(0) === 0xef && utftext.charCodeAt(1) === 0xbb && utftext.charCodeAt(2) === 0xbf) {
-			utftext = utftext.substr(3);
-			var string = '';
-			var c, c1, c2;
-			for(var i=0,l=utftext.length; i<l;) {
-				c = utftext.charCodeAt(i);
-				if(c < 128) { string += String.fromCharCode(c); i++; }
-				else if( (c > 191) && (c < 224) ) {
-					c2 = utftext.charCodeAt(i+1);
-					string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
-					i += 2;
-				} else {
-					c2 = utftext.charCodeAt(i+1);
-					c3 = utftext.charCodeAt(i+2);
-					string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
-					i += 3;
+			var utftext = data; //data.readBytes(0, data.length);
+			if(utftext.charCodeAt(0) === 0xef && utftext.charCodeAt(1) === 0xbb && utftext.charCodeAt(2) === 0xbf) {
+				utftext = utftext.substr(3);
+				var string = '';
+				var c, c1, c2;
+				for(var i=0,l=utftext.length; i<l;) {
+					c = utftext.charCodeAt(i);
+					if(c < 128) { string += String.fromCharCode(c); i++; }
+					else if( (c > 191) && (c < 224) ) {
+						c2 = utftext.charCodeAt(i+1);
+						string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+						i += 2;
+					} else {
+						c2 = utftext.charCodeAt(i+1);
+						c3 = utftext.charCodeAt(i+2);
+						string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+						i += 3;
+					}
 				}
+
+				utftext = string;
 			}
 
-			utftext = string;
-		}
-
-		return utftext;
+			cb(utftext);
+		});
 	}
 };

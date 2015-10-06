@@ -17,6 +17,7 @@ export class BA {
 	set data(val)			{ this.bytes = val || ''; this.len = this.bytes.length; this.isBA = typeof val != 'string' && val !== undefined; }
 	get data()				{ return this.bytes; }
 	move(val) 				{ this.pos += val; }
+	pushData(val)			{ this.bytes += val || ''; this.len = this.bytes.length; this.isBA = typeof val != 'string' && val !== undefined; }
 
 	readByte() {
 		if(this.bytesAvailable === 0) throw 'readByte: End of stream!';
@@ -108,11 +109,16 @@ export class BA {
 		return x>=32768? x - 65536 : x;
 	}
 
-	readUTFBytes(readLength) {
-		readLength = readLength || 0;
+	readUTFBytes(readLength=0, cb) {
 		var output = '';
-		for (var i=0; i<readLength; i++) output += String.fromCharCode( this.readByte() );
-		
+		while(readLength--) output += String.fromCharCode( this.readByte() );
+		if(readLength > 0) setTimeout(()=> this.readUTFBytes(readLength, cb, output), 0);
+		else cb(output);
+	}
+
+	readUTFBytesSync(readLength=0) {
+		var output = '';
+		while(readLength--) output += String.fromCharCode( this.readByte() );
 		return output;
 	}
 };

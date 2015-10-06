@@ -1,3 +1,4 @@
+import { BA } from './BA.js';
 var	MAXBITS = 15, MAXLCODES = 286, MAXDCODES = 30, FIXLCODES = 288,
 		LENS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258],
 		LEXT = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0],
@@ -7,7 +8,7 @@ var Endian = {BIG : 0,LITTLE : 1};
 
 export class Inflater {
 	constructor() {
-		this.inbuf = undefined, // input buffer - ByteArray
+		this.inbuf = new BA(), // input buffer - ByteArray
 		this.incnt = 0,  // bytes read so far
 		this.bitbuf = 0, // bit buffer
 		this.bitcnt = 0, // number of bits in bit buffer
@@ -59,27 +60,29 @@ export class Inflater {
 		return -9; // ran out of codes
 	}
 
-	codes(buf) {
+	codes(buf, cb) {
+		var i = 0;
 		do {
+			if(++i > 5000) return setTimeout(()=> this.codes(buf, cb), 1);
 			var symbol = this.decode(this.lencode);
-			if(symbol < 0) return symbol;
+			if(symbol < 0) return cb(symbol);
 			if(symbol < 256) { buf.position = buf.length; buf.writeByte(symbol); }
 			else if(symbol > 256) {
 				symbol -= 257;
 				if(symbol >= 29) throw 'Inflater: invalid literal/length or distance code in fixed or dynamic block';
 				var len = LENS[symbol] + this.bits(LEXT[symbol]);
 				symbol = this.decode(this.distcode);
-				if(symbol < 0) return symbol;
+				if(symbol < 0) return cb(symbol);
 				var dist = DISTS[symbol] + this.bits(DEXT[symbol]);
 				if(dist > buf.length) throw 'Inflater: distance is too far back in fixed or dynamic block';
 				buf.position = buf.length;
 				while(len--) buf.writeByte(buf.readByteAt(buf.length - dist));
 			}
 		} while (symbol != 256);
-		return 0;
+		cb(0);
 	}
 
-	stored(buf) {
+	stored(buf, cb) {
 		this.bitbuf = 0;
 		this.bitcnt = 0;
 		if(this.incnt + 4 > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
@@ -88,7 +91,8 @@ export class Inflater {
 		if(this.inbuf.readByteAt(this.incnt++) !== (~len & 0xff)
 		|| this.inbuf.readByteAt(this.incnt++) !== ((~len >> 8) & 0xff)) throw 'Inflater: stored block length did not match one\'s complement';
 		if(this.incnt + len > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
-		while(len--) buf.data = buf.bytes + String.fromCharCode( this.inbuf.readByteAt(this.incnt++) );
+		while(len--) buf.pushData( String.fromCharCode( this.inbuf.readByteAt(this.incnt++) ) );
+		cb();
 	}
 
 	constructFixedTables() {
@@ -139,30 +143,32 @@ export class Inflater {
 		return err;
 	}
 
-	setInput(buf) {
-		this.inbuf = buf;
+	setInput(data) {
+		this.inbuf.data = data;
 		this.inbuf.endian = Endian.LITTLE;
 	}
 
-	inflate(buf) {
+	inflate(buf, cb) {
 		this.incnt = this.bitbuf = this.bitcnt = 0;
 		var err;
-		do {
+		var _crunch = ()=> {
 			var last = this.bits(1);
 			var type = this.bits(2);
 			
-			if(type === 0) this.stored(buf); // uncompressed block
+			if(type === 0) this.stored(buf, onEnd); // uncompressed block
 			else if(type === 3) throw 'Inflater: invalid block type (type === 3)';
 			else { // compressed block
 				this.lencode = {count:[], symbol:[]};
 				this.distcode = {count:[], symbol:[]};
 				if(type === 1) this.constructFixedTables();
 				else if(type === 2) err = this.constructDynamicTables();
-				if(err !== 0) return err;
-				err = this.codes(buf);
-			}
-			if(err !== 0) break;
-		} while (!last);
-		return err;
+				//if(err !== 0) return err;
+				err = this.codes(buf, onEnd);
+			}	
+
+			function onEnd() { if(/*err !== 0 || */last) cb(buf.data); else setTimeout(_crunch, 1); };
+		};
+
+		_crunch();
 	}
 };

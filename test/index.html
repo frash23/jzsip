@@ -26,9 +26,10 @@
 		<h2 id="licenseTitle">NULL - No Use License, Literally</h2>
 		<code id="licenseText">Loading...</code>
 
-		<audio controls></audio>
+		<audio controls></audio> <br>
+		<a id="loadAudio" href="javascript:void(0)">Load TheFatRat - Unity into the player above</a>
 
-      <script src="../jzsip.min.js"></script>
+      <script src="../jzsip.js"></script>
       <script>
 			function $(sel) { return Array.prototype.slice.call( document.querySelectorAll(sel) ); }
 			jzsip.loadZip('test.zip', handleZip);
@@ -41,17 +42,24 @@
 			function handleZip(zip) {
 
 				window.zip = zip;
-				alert( zip.getFile('test.txt') );
+				zip.getFile('test.txt', alert);
+				zip.getFile('Images/jzsip.png', function(imgData) { $('#logo')[0].src = 'data:image/png;base64,'+ btoa(imgData); });
+				zip.getFile('Licenses/NULL', function(text) { $('#licenseText')[0].innerHTML = text.replace(/\n/g, '<br>\n'); });
+
 				setInterval(function(){
 					var elem = $('#test')[0];
 					elem.textContent = elem.textContent === '█'? '_' : '█';
 				}, 150);
-				$('#logo')[0].src = 'data:image/png;base64,'+ btoa( zip.getFile('Images/jzsip.png') );
-				$('audio')[0].src = 'data:audio/mp3;base64,'+ btoa( zip.getFile('Audio/TheFatRat - Unity.mp3') );
-				$('#licenseText')[0].innerHTML = zip.getFile('Licenses/NULL').replace(/\n/g, '<br>\n');
+
+				$('#loadAudio')[0].addEventListener('click', function(e) {
+					zip.getFile('Audio/TheFatRat - Unity.mp3', function(audioData) {
+						$('audio')[0].src = 'data:audio/mp3;base64,'+ btoa(audioData);
+					});
+				});
+
 				$('#licenseLink')[0].addEventListener('click', function(e) {
 					$('#licenseTitle')[0].textContent = 'GPLv3 - General Public License v3';
-					$('#licenseText')[0].innerHTML = zip.getFile('Licenses/GPLv3').replace(/\n/g, '<br>\n');
+					zip.getFile('Licenses/GPLv3', function(textData) { $('#licenseText')[0].innerHTML = textData.replace(/\n/g, '<br>\n'); });
 					return false;
 				});
 			}

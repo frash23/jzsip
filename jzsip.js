@@ -218,7 +218,7 @@
 				tmpbuf.position = 28;
 				var len = tmpbuf.readUnsignedShort();
 				if (len === 0) throw 'read entries: missing entry name';
-				var e = new _ZipEntryJs.ZipEntry(this.buf.readUTFBytes(len));
+				var e = new _ZipEntryJs.ZipEntry(this.buf.readUTFBytesSync(len));
 				// handle extra field
 				len = tmpbuf.readUnsignedShort();
 				e.extra = new _BAJs.BA();
@@ -251,25 +251,31 @@
 			}
 		}, {
 			key: 'getInput',
-			value: function getInput(entry) {
+			value: function getInput(entry, cb) {
 				this.buf.position = this.locOffsetTable[entry.name] + 30 - 2;
 				var len = this.buf.readShort();
 				this.buf.move(entry.name.length + len);
 				var b1 = new _BAJs.BA();
+				var oldPos = this.buf.pos;
 				if (entry.compressedSize > 0) b1.data = this.buf.readBytes(entry.compressedSize);
 				switch (entry.method) {
 					case 0:
 						// STORED
-						b1.data = b1.readUTFBytes(b1.length); // Parse as UTF-8
-						return b1;
+						this.buf.pos = oldPos;
+						this.buf.readUTFBytes(entry.compressedSize, function (b) {
+							return cb(b);
+						}); // Parse as UTF-8
+						break;
 
 					case 8:
 						// DEFLATED
+						this.buf.pos = oldPos;
+						var data = this.buf.readUTFBytesSync(entry.compressedSize);
 						var b2 = new _BAJs.BA();
 						var inflater = new _InflaterJs.Inflater();
-						inflater.setInput(b1);
-						inflater.inflate(b2);
-						return b2;
+						inflater.setInput(data);
+						inflater.inflate(b2, cb);
+						break;
 
 					default:
 						throw 'ZipFile: getInput: Invalid compression method';
@@ -277,37 +283,38 @@
 			}
 		}, {
 			key: 'getFile',
-			value: function getFile(filename) {
+			value: function getFile(filename, cb) {
 				var entry = this.getEntry(filename);
 				if (!entry) throw 'ZipFile: getFile: Unable to find entry ' + filename;
-				var data = this.getInput(entry);
-				if (!data) return '';
+				this.getInput(entry, function (data) {
+					if (!data) return cb('');
 
-				var utftext = data.readBytes(0, data.length);
-				if (utftext.charCodeAt(0) === 0xef && utftext.charCodeAt(1) === 0xbb && utftext.charCodeAt(2) === 0xbf) {
-					utftext = utftext.substr(3);
-					var string = '';
-					var c, c1, c2;
-					for (var i = 0, l = utftext.length; i < l;) {
-						c = utftext.charCodeAt(i);
-						if (c < 128) {
-							string += String.fromCharCode(c);i++;
-						} else if (c > 191 && c < 224) {
-							c2 = utftext.charCodeAt(i + 1);
-							string += String.fromCharCode((c & 31) << 6 | c2 & 63);
-							i += 2;
-						} else {
-							c2 = utftext.charCodeAt(i + 1);
-							c3 = utftext.charCodeAt(i + 2);
-							string += String.fromCharCode((c & 15) << 12 | (c2 & 63) << 6 | c3 & 63);
-							i += 3;
+					var utftext = data; //data.readBytes(0, data.length);
+					if (utftext.charCodeAt(0) === 0xef && utftext.charCodeAt(1) === 0xbb && utftext.charCodeAt(2) === 0xbf) {
+						utftext = utftext.substr(3);
+						var string = '';
+						var c, c1, c2;
+						for (var i = 0, l = utftext.length; i < l;) {
+							c = utftext.charCodeAt(i);
+							if (c < 128) {
+								string += String.fromCharCode(c);i++;
+							} else if (c > 191 && c < 224) {
+								c2 = utftext.charCodeAt(i + 1);
+								string += String.fromCharCode((c & 31) << 6 | c2 & 63);
+								i += 2;
+							} else {
+								c2 = utftext.charCodeAt(i + 1);
+								c3 = utftext.charCodeAt(i + 2);
+								string += String.fromCharCode((c & 15) << 12 | (c2 & 63) << 6 | c3 & 63);
+								i += 3;
+							}
 						}
+
+						utftext = string;
 					}
 
-					utftext = string;
-				}
-
-				return utftext;
+					cb(utftext);
+				});
 			}
 		}, {
 			key: 'entries',
@@ -329,7 +336,7 @@
 
 /***/ },
 /* 3 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
@@ -340,6 +347,8 @@
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+	var _BAJs = __webpack_require__(4);
 
 	var MAXBITS = 15,
 	    MAXLCODES = 286,
@@ -355,7 +364,7 @@
 		function Inflater() {
 			_classCallCheck(this, Inflater);
 
-			this.inbuf = undefined, // input buffer - ByteArray
+			this.inbuf = new _BAJs.BA(), // input buffer - ByteArray
 			this.incnt = 0, // bytes read so far
 			this.bitbuf = 0, // bit buffer
 			this.bitcnt = 0, // number of bits in bit buffer
@@ -413,10 +422,16 @@
 			}
 		}, {
 			key: 'codes',
-			value: function codes(buf) {
+			value: function codes(buf, cb) {
+				var _this = this;
+
+				var i = 0;
 				do {
+					if (++i > 5000) return setTimeout(function () {
+						return _this.codes(buf, cb);
+					}, 1);
 					var symbol = this.decode(this.lencode);
-					if (symbol < 0) return symbol;
+					if (symbol < 0) return cb(symbol);
 					if (symbol < 256) {
 						buf.position = buf.length;buf.writeByte(symbol);
 					} else if (symbol > 256) {
@@ -424,18 +439,18 @@
 						if (symbol >= 29) throw 'Inflater: invalid literal/length or distance code in fixed or dynamic block';
 						var len = LENS[symbol] + this.bits(LEXT[symbol]);
 						symbol = this.decode(this.distcode);
-						if (symbol < 0) return symbol;
+						if (symbol < 0) return cb(symbol);
 						var dist = DISTS[symbol] + this.bits(DEXT[symbol]);
 						if (dist > buf.length) throw 'Inflater: distance is too far back in fixed or dynamic block';
 						buf.position = buf.length;
 						while (len--) buf.writeByte(buf.readByteAt(buf.length - dist));
 					}
 				} while (symbol != 256);
-				return 0;
+				cb(0);
 			}
 		}, {
 			key: 'stored',
-			value: function stored(buf) {
+			value: function stored(buf, cb) {
 				this.bitbuf = 0;
 				this.bitcnt = 0;
 				if (this.incnt + 4 > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
@@ -443,7 +458,8 @@
 				len |= this.inbuf.readByteAt(this.incnt++) << 8;
 				if (this.inbuf.readByteAt(this.incnt++) !== (~len & 0xff) || this.inbuf.readByteAt(this.incnt++) !== (~len >> 8 & 0xff)) throw 'Inflater: stored block length did not match one\'s complement';
 				if (this.incnt + len > this.inbuf.length) throw 'Inflater: available inflate data did not terminate';
-				while (len--) buf.data = buf.bytes + String.fromCharCode(this.inbuf.readByteAt(this.incnt++));
+				while (len--) buf.pushData(String.fromCharCode(this.inbuf.readByteAt(this.incnt++)));
+				cb();
 			}
 		}, {
 			key: 'constructFixedTables',
@@ -495,31 +511,37 @@
 			}
 		}, {
 			key: 'setInput',
-			value: function setInput(buf) {
-				this.inbuf = buf;
+			value: function setInput(data) {
+				this.inbuf.data = data;
 				this.inbuf.endian = Endian.LITTLE;
 			}
 		}, {
 			key: 'inflate',
-			value: function inflate(buf) {
+			value: function inflate(buf, cb) {
+				var _this2 = this;
+
 				this.incnt = this.bitbuf = this.bitcnt = 0;
 				var err;
-				do {
-					var last = this.bits(1);
-					var type = this.bits(2);
+				var _crunch = function _crunch() {
+					var last = _this2.bits(1);
+					var type = _this2.bits(2);
 
-					if (type === 0) this.stored(buf); // uncompressed block
+					if (type === 0) _this2.stored(buf, onEnd); // uncompressed block
 					else if (type === 3) throw 'Inflater: invalid block type (type === 3)';else {
 							// compressed block
-							this.lencode = { count: [], symbol: [] };
-							this.distcode = { count: [], symbol: [] };
-							if (type === 1) this.constructFixedTables();else if (type === 2) err = this.constructDynamicTables();
-							if (err !== 0) return err;
-							err = this.codes(buf);
+							_this2.lencode = { count: [], symbol: [] };
+							_this2.distcode = { count: [], symbol: [] };
+							if (type === 1) _this2.constructFixedTables();else if (type === 2) err = _this2.constructDynamicTables();
+							//if(err !== 0) return err;
+							err = _this2.codes(buf, onEnd);
 						}
-					if (err !== 0) break;
-				} while (!last);
-				return err;
+
+					function onEnd() {
+						if ( /*err !== 0 || */last) cb(buf.data);else setTimeout(_crunch, 1);
+					};
+				};
+
+				_crunch();
 			}
 		}]);
 
@@ -561,6 +583,11 @@
 			key: 'move',
 			value: function move(val) {
 				this.pos += val;
+			}
+		}, {
+			key: 'pushData',
+			value: function pushData(val) {
+				this.bytes += val || '';this.len = this.bytes.length;this.isBA = typeof val != 'string' && val !== undefined;
 			}
 		}, {
 			key: 'readByte',
@@ -654,11 +681,24 @@
 			}
 		}, {
 			key: 'readUTFBytes',
-			value: function readUTFBytes(readLength) {
-				readLength = readLength || 0;
-				var output = '';
-				for (var i = 0; i < readLength; i++) output += String.fromCharCode(this.readByte());
+			value: function readUTFBytes(readLength, cb) {
+				var _this = this;
 
+				if (readLength === undefined) readLength = 0;
+
+				var output = '';
+				while (readLength--) output += String.fromCharCode(this.readByte());
+				if (readLength > 0) setTimeout(function () {
+					return _this.readUTFBytes(readLength, cb, output);
+				}, 0);else cb(output);
+			}
+		}, {
+			key: 'readUTFBytesSync',
+			value: function readUTFBytesSync() {
+				var readLength = arguments.length <= 0 || arguments[0] === undefined ? 0 : arguments[0];
+
+				var output = '';
+				while (readLength--) output += String.fromCharCode(this.readByte());
 				return output;
 			}
 		}, {
