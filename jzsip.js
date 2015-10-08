@@ -1,7 +1,4 @@
-/**@preserve
- * @fileoverview [JzSip](https://github.com/frash23/jzsip) Pure JS zip decoder
- * @author Jacob Pedersen <jacob@bytesizedpacket.com> (https://jacobpedersen.me)
- * @license Licensed MIT */
+/**[JzSip 0.5a](https://github.com/frash23/jzsip) @License MIT */
 /*
  * Lines with "// @FALLBACK" or between /* @FALLBACK START/END * / can safely
  * be omitted if you do not intend using the single-threaded fallback for IE<=9
