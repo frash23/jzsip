@@ -18,18 +18,18 @@
 	 * If you don't want to explicitly define the script URL
 	 * using SCRIPT_URL, this will attempt grabbing the src
 	 * attribute of the last <script> tag in the document at runtime */
-	var UNSAFE_WORKER_SRC = false;
+	var UNSAFE_WORKER_SRC = true;
 
 	/* DO NOT MODIFY BELOW UNLESS YOU KNOW WHAT YOU ARE DOING */
-
-	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 
 	var IE = navigator.userAgent.match(/MSIE [0-9]{1,2}/i);
 	var IEVer = IE? Number(IE[0].substr(5)) : Infinity;
 
+	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
+	var EXPOSED_NAME = 'JzSip';
 
-	if(!isThread) window.JzSip = function Zip(url, callback) {
+	if(!isThread) window[EXPOSED_NAME] = function Zip(url, callback) {
 		var _url = document.createElement('a');_url.href=url, url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
 		if(IEVer > 9) { // @FALLBACK
 			var worker = new Worker(SCRIPT_URL);
