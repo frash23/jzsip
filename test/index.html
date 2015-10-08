@@ -1,7 +1,9 @@
 <!DOCTYPE html>
+
 <html>
    <head>
 		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
       <title>JzSip test</title>
 		<style>
 			h1			{ font-variant: small-caps }
@@ -32,18 +34,11 @@
       <script src="../jzsip.js"></script>
       <script>
 			function $(sel) { return Array.prototype.slice.call( document.querySelectorAll(sel) ); }
-			jzsip.loadZip('test.zip', handleZip);
-			/*![Base64.js](https://github.com/davidchambers/Base64.js),
-			 * only here for IE9 compatiability in the example.
-			 * Base64.js is not required for jzsip to work, simply the
-			 * `handleZip` example below (display zipped images) */
-			!function(){function t(t){this.message=t}var r="undefined"!=typeof exports?exports:this,e="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";t.prototype=new Error,t.prototype.name="InvalidCharacterError",r.btoa||(r.btoa=function(r){for(var o,n,a=String(r),i=0,c=e,d="";a.charAt(0|i)||(c="=",i%1);d+=c.charAt(63&o>>8-i%1*8)){if(n=a.charCodeAt(i+=.75),n>255)throw new t("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");o=o<<8|n}return d}),r.atob||(r.atob=function(r){var o=String(r).replace(/=+$/,"");if(o.length%4==1)throw new t("'atob' failed: The string to be decoded is not correctly encoded.");for(var n,a,i=0,c=0,d="";a=o.charAt(c++);~a&&(n=i%4?64*n+a:a,i++%4)?d+=String.fromCharCode(255&n>>(-2*i&6)):0)a=e.indexOf(a);return d})}();
 
-			function handleZip(zip) {
-
+			new JzSip('test.zip', function(zip) {
 				window.zip = zip;
 				zip.getFile('test.txt', alert);
-				zip.getFile('Images/jzsip.png', function(imgData) { $('#logo')[0].src = 'data:image/png;base64,'+ btoa(imgData); });
+				zip.getFile('Images/jzsip.png', function(imgData) { $('#logo')[0].src = 'data:image/png;base64,'+ imgData; }, 'base64');
 				zip.getFile('Licenses/NULL', function(text) { $('#licenseText')[0].innerHTML = text.replace(/\n/g, '<br>\n'); });
 
 				setInterval(function(){
@@ -53,8 +48,8 @@
 
 				$('#loadAudio')[0].addEventListener('click', function(e) {
 					zip.getFile('Audio/TheFatRat - Unity.mp3', function(audioData) {
-						$('audio')[0].src = 'data:audio/mp3;base64,'+ btoa(audioData);
-					});
+						$('audio')[0].src = 'data:audio/mp3;base64,'+ audioData;
+					}, 'base64');
 				});
 
 				$('#licenseLink')[0].addEventListener('click', function(e) {
@@ -62,7 +57,7 @@
 					zip.getFile('Licenses/GPLv3', function(textData) { $('#licenseText')[0].innerHTML = textData.replace(/\n/g, '<br>\n'); });
 					return false;
 				});
-			}
+			});
       </script>
    </body>
 </html>
