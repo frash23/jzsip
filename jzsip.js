@@ -89,7 +89,6 @@
 			}
 		};
 		if(xhr.overrideMimeType) xhr.responseType = 'arraybuffer';
-		else xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
 		xhr.send(null);
 	}
 
