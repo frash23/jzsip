@@ -82,10 +82,12 @@
 	function loadZip(url, cb) {
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', url, true);
-		xhr.addEventListener('load', function() {
-			var data = IEVer>10? new Uint8Array(xhr.response) : new VBArray(xhr.responseBody).toArray();
-			cb( new ZipFile(data) );
-		}, false);
+		xhr.onreadystatechange = function() {
+			if(xhr.readyState === 4 && xhr.status === 200) {
+				var data = IEVer>10? new Uint8Array(xhr.response) : new VBArray(xhr.responseBody).toArray();
+				cb( new ZipFile(data) );
+			}
+		};
 		if(xhr.overrideMimeType) xhr.responseType = 'arraybuffer';
 		else xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
 		xhr.send(null);
