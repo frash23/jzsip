@@ -1,7 +1,8 @@
+/**@preserve
+ * @fileoverview [JzSip](https://github.com/frash23/jzsip) Pure JS zip decoder
+ * @author Jacob Pedersen <jacob@bytesizedpacket.com> (https://jacobpedersen.me)
+ * @license Licensed MIT */
 /*
- * JzSip 0.5a by Jacob Pedersen
- * Licensed MIT
- *
  * Lines with "// @FALLBACK" or between /* @FALLBACK START/END * / can safely
  * be omitted if you do not intend using the single-threaded fallback for IE<=9
  */
@@ -11,7 +12,7 @@
 
 	/* If you're loading JzSip dynamically, you may have to
 	 * explicitly define what script to instantiate workers on */
-	var SCRIPT_URL = 'scripts.js';
+	var SCRIPT_URL = '';
 
 	/* IE10 doesn't support document.currentScript.src
 	 * If you don't want to explicitly define the script URL
@@ -21,19 +22,16 @@
 
 	/* DO NOT MODIFY BELOW UNLESS YOU KNOW WHAT YOU ARE DOING */
 
-	var isIE = false, ieVer;
 	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 
 	var IE = navigator.userAgent.match(/MSIE [0-9]{1,2}/i);
 	var IEVer = IE? Number(IE[0].substr(5)) : Infinity;
 
-	var USE_WORKERS = true && IEVer > 9; /*Workers don't work on IE*/ // @FALLBACK
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
 
-	/* Non-Worker code START */
 	if(!isThread) window.JzSip = function Zip(url, callback) {
 		var _url = document.createElement('a');_url.href=url, url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
-		if(USE_WORKERS) { // @FALLBACK
+		if(IEVer > 9) { // @FALLBACK
 			var worker = new Worker(SCRIPT_URL);
 			var wcnt = 0;
 			var workerTask = function(cmd, data, cb) {
@@ -59,11 +57,14 @@
 		/* @FALLBACK END */
 	};
 
-	if(!isThread/*@FALLBACK START*/ && USE_WORKERS/*@FALLBACK END*/) return SCRIPT_URL = document.currentScript? document.currentScript.src : SCRIPT_URL || (function(){var tags=document.getElementsByTagName('script'),tag=tags[tags.length-1];return tag.getAttribute('src', 2); })();
-	/* Non-Worker code END */
+	if(!isThread/*@FALLBACK START*/ && IEVer>9/*@FALLBACK END*/) {
+		if(document.currentScript) SCRIPT_URL = document.currentScript.src
+		else if(UNSAFE_WORKER_SRC) { var tags=document.getElementsByTagName('script'),tag=tags[tags.length-1]; SCRIPT_URL = tag.getAttribute('src', 2); }
+		else if(!SCRIPT_URL) throw 'Unable to get JzSip source script';
+		return; /*We only want to continue if we're a worker*/
+	}
 
-	/* Worker code START */
-	if(isThread && USE_WORKERS) { // @FALLBACK
+	if(isThread && IEVer>9) { // @FALLBACK
 		var zip;
 		onmessage = function(e) {
 			if(e.data.constructor !== Array) throw 'Worker onmessage: Data not Array';
@@ -77,7 +78,6 @@
 			}
 		};
 	} // @FALLBACK
-	/* Worker code END */
 
 	function loadZip(url, cb) {
 		var xhr = new XMLHttpRequest();
@@ -113,14 +113,14 @@
 		var c; /*chunk*/
 
 		for (var i=0,l=len-len%3; i <l; i++) {
-			c = (arr[i] << 16) + (arr[++i] << 8) + (arr[++i])
+			c = (arr[i] << 16) + (arr[++i] << 8) + (arr[++i]);
 			output += b64char[c >> 18 & 0x3F] + b64char[c >> 12 & 0x3F] + b64char[c >> 6 & 0x3F] + b64char[c & 0x3F];
 		}
 
 		if(len%3 === 1) c = arr[arr.length - 1], output += b64char[c >> 2] + b64char[(c << 4) & 0x3F] + '==';
 		else c = (arr[arr.length - 2] << 8) + (arr[arr.length - 1]), output += b64char[c >> 10] + b64char[(c >> 4) & 0x3F] + b64char[(c << 2) & 0x3F] + '=';
 
-		return output
+		return output;
 	};
 	/* @FALLBACK END */
 
@@ -137,7 +137,6 @@
 				case 0: /* STORED */
 					this.data = fileData;
 					return fileData;
-				break;
 
 				case 8: /* DEFLATED */			
 				defalt: throw 'ZipEntry#read_raw: Invalid compression method';
