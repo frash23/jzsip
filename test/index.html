@@ -28,35 +28,35 @@
 		<h2 id="licenseTitle">NULL - No Use License, Literally</h2>
 		<code id="licenseText">Loading...</code>
 
-		<audio controls></audio> <br>
+		<audio id="audio" controls></audio> <br>
 		<a id="loadAudio" href="javascript:void(0)">Load TheFatRat - Unity into the player above</a>
 
 		<script src="../minified/jzsip.min.js"></script>
  		<script>
-			function $(sel) { return Array.prototype.slice.call( document.querySelectorAll(sel) ); }
+			function $(id) { return document.getElementById(id); }
 			var safeMap = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', '\'':'&#039;', };
 			function htmlentities(text) { return text.replace(/[&<>"']/g, function(s) { return safeMap[s]; }); }
 
 			new JzSip('test.zip', function(zip) {
 				window.zip = zip;
 				zip.getFile('test.txt', alert);
-				zip.getFile('Images/jzsip.png', function(imgData) { $('#logo')[0].src = 'data:image/png;base64,'+ imgData; }, 'base64');
-				zip.getFile('Licenses/NULL', function(text) { $('#licenseText')[0].innerHTML = htmlentities(text).replace(/\n/g, '<br>'); });
+				zip.getFile('Images/jzsip.png', function(imgData) { $('logo').src = 'data:image/png;base64,'+ imgData; }, 'base64');
+				zip.getFile('Licenses/NULL', function(text) { $('licenseText').innerHTML = htmlentities(text).replace(/\n/g, '<br>'); });
 
 				setInterval(function(){
-					var elem = $('#test')[0];
+					var elem = $('test');
 					elem.textContent = elem.textContent === '█'? '_' : '█';
 				}, 150);
 
-				$('#loadAudio')[0].addEventListener('click', function(e) {
+				$('loadAudio').addEventListener('click', function(e) {
 					zip.getFile('Audio/TheFatRat - Unity.mp3', function(audioData) {
-						$('audio')[0].src = 'data:audio/mp3;base64,'+ audioData;
+						$('audio').src = 'data:audio/mp3;base64,'+ audioData;
 					}, 'base64');
 				});
 
-				$('#licenseLink')[0].addEventListener('click', function(e) {
-					$('#licenseTitle')[0].textContent = 'GPLv3 - General Public License v3';
-					zip.getFile('Licenses/GPLv3', function(textData) { $('#licenseText')[0].innerHTML = htmlentities(textData).replace(/\n/g, '<br>'); });
+				$('licenseLink').addEventListener('click', function(e) {
+					$('licenseTitle').textContent = 'GPLv3 - General Public License v3';
+					zip.getFile('Licenses/GPLv3', function(textData) { $('licenseText').innerHTML = htmlentities(textData).replace(/\n/g, '<br>'); });
 					return false;
 				});
 			});
