@@ -1,6 +1,4 @@
 /**[JzSip 0.5a](https://github.com/frash23/jzsip) @License MIT */
-/* Lines with "//@FALLBACK" or between / *@FALLBACK START/END* / can be omitted if you don't need the
- * single-threaded fallback for IE<=9, a script to do this can be found in the readme */ //@FALLBACK
 
 (function () {
 	"use strict";
@@ -17,10 +15,7 @@
 
 	/* DO NOT MODIFY BELOW UNLESS YOU KNOW WHAT YOU ARE DOING */
 
-	/*@FALLBACK START*/
-	var IE = navigator.userAgent.match(/MSIE [0-9]{1,2}/i);
-	var IEVer = IE? Number(IE[0].substr(5)) : Infinity;
-	/*@FALLBACK END*/
+	
 
 	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
@@ -28,7 +23,6 @@
 	if(!isThread) window.JzSip = function Zip(url, callback) {
 		var _url = document.createElement('a'); _url.href=url;
 		url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
-		if(IEVer > 9) { //@FALLBACK
 			var worker = new Worker(SCRIPT_URL);
 			var wcnt = 0;
 			var workerTask = function(cmd, data, cb) {
@@ -42,24 +36,16 @@
 					getEntry: function(name, cb) { workerTask('getEntry', [name], function(json) { cb( JSON.parse(json) ); }); }
 				})
 			});
-		/*@FALLBACK START*/
-		} else loadZip(url, function(zip) {
-			callback({
-				getFile: function(name, cb, encoding) { cb(zip.getFile(name, encoding||'utf8')); },
-				getEntry: function(name, cb) { cb( JSON.parse( zip.getEntry(name) ) ); }
-			});
-		});
-		/*@FALLBACK END*/
+		
 	};
 
-	if(!isThread/*@FALLBACK START*/ && IEVer>9/*@FALLBACK END*/) {
+	if(!isThread) {
 		if(document.currentScript) SCRIPT_URL = document.currentScript.src;
 		else if(UNSAFE_WORKER_SRC && !SCRIPT_URL) { var tags=document.getElementsByTagName('script'),tag=tags[tags.length-1]; SCRIPT_URL = tag.getAttribute('src', 2); }
 		else if(!SCRIPT_URL) throw 'Unable to get JzSip source script';
 		return; /*We only want to continue if we're a worker*/
 	}
 
-	if(isThread && IEVer>9) { //@FALLBACK
 		var zip;
 		onmessage = function(e) {
 			if(e.data.constructor !== Array) throw 'Worker onmessage: Data not Array';
@@ -72,14 +58,13 @@
 				case 'getEntry': postMessage([taskId, zip.getEntry(data[0])]); break;
 			}
 		};
-	} //@FALLBACK
 
 	function loadZip(url, cb) {
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', url, true);
 		xhr.onreadystatechange = function() {
 			if(xhr.readyState === 4 && xhr.status === 200) {
-				var data = /*@FALLBACK START*/IEVer<10? new VBArray(xhr.responseBody).toArray() : /*@FALLBACK END*/new Uint8Array(xhr.response);
+				var data = new Uint8Array(xhr.response);
 				cb( new ZipFile(data) );
 			}
 		};
@@ -89,7 +74,7 @@
 
 	function subArr(arr, begin, end) {
 		end = end === 'undefined'? arr.length : begin + end;
-		return /*@FALLBACK START*/IEVer<10? arr.slice(begin, end) : /*@FALLBACK END*/arr.subarray(begin, end);
+		return arr.subarray(begin, end);
 	}
 
 	function readUTF(arr, len, offset) {
@@ -101,24 +86,7 @@
 		return out;
 	}
 	
-	/*@FALLBACK START*/
-	var b64char = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
-	function arrToBase64(arr) {
-		var len = arr.length;
-		var output = '';
-		var c; /*chunk*/
-
-		for (var i=0,l=len-len%3; i <l; i++) {
-			c = (arr[i] << 16) + (arr[++i] << 8) + (arr[++i]);
-			output += b64char[c >> 18 & 0x3F] + b64char[c >> 12 & 0x3F] + b64char[c >> 6 & 0x3F] + b64char[c & 0x3F];
-		}
-
-		if(len%3 === 1) c = arr[arr.length - 1], output += b64char[c >> 2] + b64char[(c << 4) & 0x3F] + '==';
-		else c = (arr[arr.length - 2] << 8) + (arr[arr.length - 1]), output += b64char[c >> 10] + b64char[(c >> 4) & 0x3F] + b64char[(c << 2) & 0x3F] + '=';
-
-		return output;
-	};
-	/*@FALLBACK END*/
+	
 
 	function readUInt(arr, i) { return (arr[i+3] << 24) | (arr[i+2] << 16) | (arr[i+1] << 8) | arr[i]; }
 	function readUShort(arr, i) { return ((arr[i+1]) << 8) | arr[i]; }
@@ -145,7 +113,7 @@
 		},
 		read_base64: function() {
 			if(this.dataBase64) return this.dataBase64;
-			var b64 = /*@FALLBACK START*/IEVer <= 9? arrToBase64( this.read_raw() ) : /*@FALLBACK END*/btoa( this.read_utf8() );
+			var b64 = btoa( this.read_utf8() );
 			return (this.dataBase64 = b64);
 		}
 	};

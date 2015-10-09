@@ -31,15 +31,17 @@
 		<audio controls></audio> <br>
 		<a id="loadAudio" href="javascript:void(0)">Load TheFatRat - Unity into the player above</a>
 
-      <script src="../minified/jzsip.min.js"></script>
-      <script>
+		<script src="../minified/jzsip_nofallback.min.js"></script>
+ 		<script>
 			function $(sel) { return Array.prototype.slice.call( document.querySelectorAll(sel) ); }
+			var safeMap = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', '\'':'&#039;', };
+			function htmlentities(text) { return text.replace(/[&<>"']/g, function(s) { return safeMap[s]; }); }
 
 			new JzSip('test.zip', function(zip) {
 				window.zip = zip;
 				zip.getFile('test.txt', alert);
 				zip.getFile('Images/jzsip.png', function(imgData) { $('#logo')[0].src = 'data:image/png;base64,'+ imgData; }, 'base64');
-				zip.getFile('Licenses/NULL', function(text) { $('#licenseText')[0].innerHTML = text.replace(/\n/g, '<br>\n'); });
+				zip.getFile('Licenses/NULL', function(text) { $('#licenseText')[0].innerHTML = htmlentities(text).replace(/\n/g, '<br>'); });
 
 				setInterval(function(){
 					var elem = $('#test')[0];
@@ -54,7 +56,7 @@
 
 				$('#licenseLink')[0].addEventListener('click', function(e) {
 					$('#licenseTitle')[0].textContent = 'GPLv3 - General Public License v3';
-					zip.getFile('Licenses/GPLv3', function(textData) { $('#licenseText')[0].innerHTML = textData.replace(/\n/g, '<br>\n'); });
+					zip.getFile('Licenses/GPLv3', function(textData) { $('#licenseText')[0].innerHTML = htmlentities(textData).replace(/\n/g, '<br>'); });
 					return false;
 				});
 			});
