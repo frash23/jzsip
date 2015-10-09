@@ -57,3 +57,19 @@ function onZipLoad(zip) {
 
 For live demos, check the `test` folder.
 Also hosted [here](http://dev.pj.gy/jzsip/test/).
+
+Generating minified scripts
+---
+All fallback code is annotated. If you do not intend supporing IE9 and below, you can strip it out using this `sed` command:
+```
+sed '/@FALLBACK/d' jzsip.js | sed 's/\/\*@FALLBACK START.*@FALLBACK END\*\///' > minified/jzsip_nofallback.js
+```
+To minify a script, use:
+```
+// Minify jzsip.js -> minified/jzsip.min.js
+uglifyjs --mangle --mangle-props --reserved-file uglify.js --comments --compress unsafe jzsip.js -o minified/jzsip.min.js
+
+// Minify minified/jzsip_nofallback.js -> minified/jzsip_nofallback.min.js
+uglifyjs --mangle --mangle-props --reserved-file uglify.js --comments --compress unsafe minified/jzsip_nofallback.js -o minified/jzsip_nofallback.min.js
+```
+Of course, `jzsip_nofallback.min.js` should provide the smallest filesize.

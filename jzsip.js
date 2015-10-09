@@ -1,6 +1,6 @@
 /**[JzSip 0.5a](https://github.com/frash23/jzsip) @License MIT */
 /*
- * Lines with "// @FALLBACK" or between /* @FALLBACK START/END * / can safely
+ * Lines with "//@ FALLBACK" or between /* @FALLBACK START/END* / can safely
  * be omitted if you do not intend using the single-threaded fallback for IE<=9
  */
 
@@ -9,7 +9,7 @@
 
 	/* If you're loading JzSip dynamically, you may have to
 	 * explicitly define what script to instantiate workers on */
-	var SCRIPT_URL = '';
+	var SCRIPT_URL = 'abc';
 
 	/* IE10 doesn't support document.currentScript.src
 	 * If you don't want to explicitly define the script URL
@@ -27,7 +27,8 @@
 	var EXPOSED_NAME = 'JzSip';
 
 	if(!isThread) window[EXPOSED_NAME] = function Zip(url, callback) {
-		var _url = document.createElement('a');_url.href=url, url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
+		var _url = document.createElement('a'); _url.href=url;
+		url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
 		if(IEVer > 9) { // @FALLBACK
 			var worker = new Worker(SCRIPT_URL);
 			var wcnt = 0;
@@ -43,7 +44,7 @@
 					isWorker: true
 				})
 			});
-		/* @FALLBACK START */
+		/*@FALLBACK START*/
 		} else loadZip(url, function(zip) {
 			callback({
 				getFile: function(name, cb, encoding) { cb(zip.getFile(name, encoding||'utf8')); },
@@ -51,11 +52,11 @@
 				isWorker: false
 			});
 		});
-		/* @FALLBACK END */
+		/*@FALLBACK END*/
 	};
 
 	if(!isThread/*@FALLBACK START*/ && IEVer>9/*@FALLBACK END*/) {
-		if(document.currentScript) SCRIPT_URL = document.currentScript.src
+		if(document.currentScript) SCRIPT_URL = document.currentScript.src;
 		else if(UNSAFE_WORKER_SRC) { var tags=document.getElementsByTagName('script'),tag=tags[tags.length-1]; SCRIPT_URL = tag.getAttribute('src', 2); }
 		else if(!SCRIPT_URL) throw 'Unable to get JzSip source script';
 		return; /*We only want to continue if we're a worker*/
@@ -103,7 +104,7 @@
 		return out;
 	}
 	
-	/* @FALLBACK START */
+	/*@FALLBACK START*/
 	var b64char = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
 	function arrToBase64(arr) {
 		var len = arr.length;
@@ -120,7 +121,7 @@
 
 		return output;
 	};
-	/* @FALLBACK END */
+	/*@FALLBACK END*/
 
 	function readUInt(arr, i) { return (arr[i+3] << 24) | (arr[i+2] << 16) | (arr[i+1] << 8) | arr[i]; }
 	function readUShort(arr, i) { return ((arr[i+1]) << 8) | arr[i]; }
