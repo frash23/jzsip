@@ -62,7 +62,7 @@ Generating minified scripts
 ---
 All fallback code is annotated. If you do not intend supporing IE9 and below, you can strip it out using this `sed` command:
 ```
-sed '/@FALLBACK/d' jzsip.js | sed 's/\/\*@FALLBACK START.*@FALLBACK END\*\///' > minified/jzsip_nofallback.js
+sed '/\/\/@FALLBACK/d' jzsip.js | sed 's/\/\*@FALLBACK START.*@FALLBACK END\*\///' > minified/jzsip_nofallback.js
 ```
 To minify a script, use:
 ```

@@ -1,8 +1,6 @@
 /**[JzSip 0.5a](https://github.com/frash23/jzsip) @License MIT */
-/*
- * Lines with "//@ FALLBACK" or between /* @FALLBACK START/END* / can safely
- * be omitted if you do not intend using the single-threaded fallback for IE<=9
- */
+/* Lines with "//@FALLBACK" or between /*@FALLBACK START/END* / can be omitted if you don't need the
+ * single-threaded fallback for IE<=9, a script to do this can be found in the readme */
 
 (function () {
 	"use strict";
@@ -24,12 +22,11 @@
 
 	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
-	var EXPOSED_NAME = 'JzSip';
 
-	if(!isThread) window[EXPOSED_NAME] = function Zip(url, callback) {
+	if(!isThread) window.JzSip = function Zip(url, callback) {
 		var _url = document.createElement('a'); _url.href=url;
 		url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
-		if(IEVer > 9) { // @FALLBACK
+		if(IEVer > 9) { //@FALLBACK
 			var worker = new Worker(SCRIPT_URL);
 			var wcnt = 0;
 			var workerTask = function(cmd, data, cb) {
@@ -40,16 +37,14 @@
 			workerTask('loadZip', [url], function() {
 				callback({
 					getFile: function(name, cb, encoding) { workerTask('getFile', [name, encoding||'utf8'], cb); },
-					getEntry: function(name, cb) { workerTask('getEntry', [name], function(json) { cb( JSON.parse(json) ); }); },
-					isWorker: true
+					getEntry: function(name, cb) { workerTask('getEntry', [name], function(json) { cb( JSON.parse(json) ); }); }
 				})
 			});
 		/*@FALLBACK START*/
 		} else loadZip(url, function(zip) {
 			callback({
 				getFile: function(name, cb, encoding) { cb(zip.getFile(name, encoding||'utf8')); },
-				getEntry: function(name, cb) { cb( JSON.parse( zip.getEntry(name) ) ); },
-				isWorker: false
+				getEntry: function(name, cb) { cb( JSON.parse( zip.getEntry(name) ) ); }
 			});
 		});
 		/*@FALLBACK END*/
@@ -62,7 +57,7 @@
 		return; /*We only want to continue if we're a worker*/
 	}
 
-	if(isThread && IEVer>9) { // @FALLBACK
+	if(isThread && IEVer>9) { //@FALLBACK
 		var zip;
 		onmessage = function(e) {
 			if(e.data.constructor !== Array) throw 'Worker onmessage: Data not Array';
@@ -70,29 +65,29 @@
 			var taskId = e.data[1]
 			var data = e.data.slice(2);
 			switch(cmd) {
-				case 'loadZip': loadZip(data[0], function(_zip) { zip = _zip; postMessage([taskId]); }); break;
+				case 'loadZip': loadZip(data[0], function(_zip) { zip = _zip; console.log(zip); postMessage([taskId]); }); break;
 				case 'getFile': postMessage([taskId, zip.getFile(data[0], data[1])]); break;
 				case 'getEntry': postMessage([taskId, zip.getEntry(data[0])]); break;
 			}
 		};
-	} // @FALLBACK
+	} //@FALLBACK
 
 	function loadZip(url, cb) {
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', url, true);
 		xhr.onreadystatechange = function() {
 			if(xhr.readyState === 4 && xhr.status === 200) {
-				var data = IEVer>10? new Uint8Array(xhr.response) : new VBArray(xhr.responseBody).toArray();
+				var data = /*@FALLBACK START*/IEVer<10? new VBArray(xhr.responseBody).toArray() : /*@FALLBACK END*/new Uint8Array(xhr.response);
 				cb( new ZipFile(data) );
 			}
 		};
-		if(xhr.overrideMimeType) xhr.responseType = 'arraybuffer';
+		xhr.responseType = 'arraybuffer';
 		xhr.send(null);
 	}
 
 	function subArr(arr, begin, end) {
 		end = end === 'undefined'? arr.length : begin + end;
-		return IEVer>10? arr.subarray(begin, end) : arr.slice(begin, end);
+		return /*@FALLBACK START*/IEVer<10? arr.slice(begin, end) : /*FALLBACK END*/arr.subarray(begin, end);
 	}
 
 	function readUTF(arr, len, offset) {
@@ -148,7 +143,7 @@
 		},
 		read_base64: function() {
 			if(this.dataBase64) return this.dataBase64;
-			var b64 = /*@FALLBACK STAR*/IEVer <= 9? arrToBase64( this.read_raw() ) : /*@FALLBACK END*/btoa( this.read_utf8() );
+			var b64 = /*@FALLBACK START*/IEVer <= 9? arrToBase64( this.read_raw() ) : /*@FALLBACK END*/btoa( this.read_utf8() );
 			return (this.dataBase64 = b64);
 		}
 	};
