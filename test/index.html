@@ -34,7 +34,7 @@
 		<script src="../minified/jzsip.min.js"></script>
  		<script>
 			function $(id) { return document.getElementById(id); }
-			var safeMap = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', '\'':'&#039;', };
+			var safeMap = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', '\'':'&#039;' };
 			function htmlentities(text) { return text.replace(/[&<>"']/g, function(s) { return safeMap[s]; }); }
 
 			new JzSip('test.zip', function(zip) {
@@ -48,17 +48,17 @@
 					elem.textContent = elem.textContent === '█'? '_' : '█';
 				}, 150);
 
-				$('loadAudio').addEventListener('click', function(e) {
+				$('loadAudio').onclick = function(e) {
 					zip.getFile('Audio/TheFatRat - Unity.mp3', function(audioData) {
 						$('audio').src = 'data:audio/mp3;base64,'+ audioData;
 					}, 'base64');
-				});
+				};
 
-				$('licenseLink').addEventListener('click', function(e) {
+				$('licenseLink').onclick = function(e) {
 					$('licenseTitle').textContent = 'GPLv3 - General Public License v3';
 					zip.getFile('Licenses/GPLv3', function(textData) { $('licenseText').innerHTML = htmlentities(textData).replace(/\n/g, '<br>'); });
 					return false;
-				});
+				};
 			});
       </script>
    </body>
