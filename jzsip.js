@@ -36,17 +36,17 @@
 				worker.postMessage( [cmd, taskId].concat(data) );
 				worker.addEventListener('message', function _(e) { if(e.data[0] === taskId) cb(e.data[1]), worker.removeEventListener('message', _); });
 			};
-			workerTask('loadZip', [url], function() {
+			workerTask('load', [url], function() {
 				callback({
-					getFile: function(name, cb, encoding) { workerTask('getFile', [name, encoding||'utf8'], cb); },
-					getEntry: function(name, cb) { workerTask('getEntry', [name], function(json) { cb( JSON.parse(json) ); }); }
+					getFile: function(name, cb, encoding) { workerTask('file', [name, encoding||'utf8'], cb); },
+					getEntry: function(name, cb) { workerTask('entry', [name], function(json) { cb( JSON.parse(json) ); }); }
 				})
 			});
 		/*@FALLBACK START*/
 		} else loadZip(url, function(zip) {
 			callback({
-				getFile: function(name, cb, encoding) { cb(zip.getFile(name, encoding||'utf8')); },
-				getEntry: function(name, cb) { cb( JSON.parse( zip.getEntry(name) ) ); }
+				getFile: function(name, cb, encoding) { cb(zip._getFile(name, encoding||'utf8')); },
+				getEntry: function(name, cb) { cb( JSON.parse( zip._getEntry(name) ) ); }
 			});
 		});
 		/*@FALLBACK END*/
@@ -67,9 +67,9 @@
 			var taskId = e.data[1]
 			var data = e.data.slice(2);
 			switch(cmd) {
-				case 'loadZip': loadZip(data[0], function(_zip) { zip = _zip; postMessage([taskId]); }); break;
-				case 'getFile': postMessage([taskId, zip.getFile(data[0], data[1])]); break;
-				case 'getEntry': postMessage([taskId, zip.getEntry(data[0])]); break;
+				case 'load': loadZip(data[0], function(_zip) { zip = _zip; postMessage([taskId]); }); break;
+				case 'file': postMessage([taskId, zip._getFile(data[0], data[1])]); break;
+				case 'entry': postMessage([taskId, zip._getEntry(data[0])]); break;
 			}
 		};
 	} //@FALLBACK
@@ -200,8 +200,7 @@
 	var jsonBlacklist = ['zip','data','dataUTF8','dataBase64'];
 	var jsonReplacer = function(k,v) { return jsonBlacklist.indexOf(k)>-1? undefined : v };
 	ZipFile.prototype = {
-		getFile: function(name, enc) { enc=enc.replace(/\W/g,'').toLowerCase(); return this.entryTable[name]['read_'+ enc](); },
-		getEntry: function(name) { return JSON.stringify(this.entryTable[name], jsonReplacer, null); },
-		getEntries: function() { var entries = []; for(var e in this.entryTable) entries.push(this.entryTable[e]); return entries; }
+		_getFile: function(name, enc) { enc=enc.replace(/\W/g,'').toLowerCase(); return this.entryTable[name]['read_'+ enc](); },
+		_getEntry: function(name) { return JSON.stringify(this.entryTable[name], jsonReplacer, null); }
 	};
 }());
