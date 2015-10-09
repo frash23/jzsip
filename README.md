@@ -1,59 +1,36 @@
-# jzsip
-5KB read-only ZIP implementation in browser-sideJavaScript. Supports compression.
-![Yes, it's 5KB after gzip -6](https://raw.githubusercontent.com/frash23/jzsip/master/5kb_after_gzip.png)
+# JzSip
+Tiny & fast library for reading ZIP files in your browser with multi-threading (IE10+). 
+Supports pretty much any browser. Works in IE11's simulated IE5.
+![Yes, it's >3KB after gzip](https://raw.githubusercontent.com/frash23/jzsip/master/filesize.png)
 
 Why?
 ---
 This was made for a project where end-developers are supposed to easily create
-a bundle of assets for their project and load it up. Hundreds of HTTP requests
-aren't fun, so we decided to support some sort of archive format.
-Originally we were going for tar, but realized the ubiquity of Zip
-(and that it also supports creating archives without compression!).
+a bundle of assets for their project, so we needed to support an archive format.
 
 Everything for regular archives should be supported *except* encrypted files
 and writing to the Zip-file.
 
-Inflating can be slow. Use it if you have lots of text or other easily compressible media, otherwise avoid it.
+Inflating is slow. Use it if you have lots of text or other easily compressible media, otherwise avoid it.
 
 
 Usage
 ---
-Load the `jzsip.js` or `jzsip.min.js` before your code using ZIP
+Load your `jzsip` script of choice before your code using ZIP, then:
 ```
-// Create ZIP instance
-var myZip = new jzsip.Zip(data);
-alert( myZip.getFile('textFile.txt') );
+// Load a zip file
+new JzSip('myFiles.zip', function(zip) {
+	/* Do stuff with your zip */
+	zip.getFile('text.txt', alert);
+});
 
-// `btoa()` is a native Base64 encoder. The following snippet will
-// add an image to the page with source in `myZip://images/myImage.png`
-var base64img = btoa( myZip.getFile('images/myImage.png') );
-var imgElem = document.createElement('img');
-imgElem.src = 'data:image/png;base64,'+ base64img;
-document.body.appendChild(imgElem);
+// Load and display an image in the <body> (IE9+)
+zip.getFile('Images/myImage.png', function(imgData) {
+	var imgElem = document.createElement('img');
+	imgElem.src = 'data:image/png;base64,'+ imgData;
+	document.body.appendChild(imgElem);
+}, 'base64');
 ```
-You can instantiate a Zip manually in an XHR:
-```
-var xhr = new XMLHttpRequest();
-xhr.open('GET', 'myFiles.zip', true);
-xhr.addEventListener('load', onZipLoad, true);
-xhr.overrideMimeType('text/plain; charset=x-user-defined');
-xhr.send();
-
-function onZipLoad() {
-	var myZip = new jzsip.Zip( xhr.responseText );
-	alert( myZip.getFile('text.txt') );
-}
-```
-However it gets messy if you need IE9 and IE10 support,
-so jzsip provides a method to make it easy:
-```
-jzsip.loadZip('myFiles.zip', onZipLoad);
-function onZipLoad(zip) {
-	// `zip` is now a Zip instance.
-	alert( zip.getFile('text.txt') );
-};
-```
-
 
 For live demos, check the `test` folder.
 Also hosted [here](http://dev.pj.gy/jzsip/test/).
