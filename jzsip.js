@@ -17,18 +17,13 @@
 
 	/* DO NOT MODIFY BELOW UNLESS YOU KNOW WHAT YOU ARE DOING */
 
-	/*@FALLBACK START*/
-	var IE = navigator.userAgent.match(/MSIE [0-9]{1,2}/i);
-	var IEVer = IE? Number(IE[0].substr(5)) : Infinity;
-	/*@FALLBACK END*/
-
 	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
 
 	if(!isThread) window.JzSip = function Zip(url, callback) {
 		var _url = document.createElement('a'); _url.href=url;
 		url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
-		if(IEVer > 9) { //@FALLBACK
+		if(window.Worker) { //@FALLBACK
 			var worker = new Worker(SCRIPT_URL);
 			var wcnt = 0;
 			var workerTask = function(cmd, data, cb) {
@@ -52,14 +47,14 @@
 		/*@FALLBACK END*/
 	};
 
-	if(!isThread/*@FALLBACK START*/ && IEVer>9/*@FALLBACK END*/) {
+	if(!isThread/*@FALLBACK START*/ && window.Worker/*@FALLBACK END*/) {
 		if(document.currentScript) SCRIPT_URL = document.currentScript.src;
 		else if(UNSAFE_WORKER_SRC && !SCRIPT_URL) { var tags=document.getElementsByTagName('script'),tag=tags[tags.length-1]; SCRIPT_URL = tag.getAttribute('src', 2); }
 		else if(!SCRIPT_URL) throw 'Unable to get JzSip source script';
 		return; /*We only want to continue if we're a worker*/
 	}
 
-	if(isThread && IEVer>9) { //@FALLBACK
+	if(isThread) { //@FALLBACK
 		var zip;
 		onmessage = function(e) {
 			if(e.data.constructor !== Array) throw 'Worker onmessage: Data not Array';
@@ -79,7 +74,8 @@
 		xhr.open('GET', url, true);
 		xhr.onreadystatechange = function() {
 			if(xhr.readyState === 4 && xhr.status === 200) {
-				var data = /*@FALLBACK START*/IEVer<10? new VBArray(xhr.responseBody).toArray() : /*@FALLBACK END*/new Uint8Array(xhr.response);
+				console.log(!!xhr.response);
+				var data = /*@FALLBACK START*/!xhr.response? new VBArray(xhr.responseBody).toArray() : /*@FALLBACK END*/new Uint8Array(xhr.response);
 				cb( new ZipFile(data) );
 			}
 		};
@@ -89,7 +85,7 @@
 
 	function subArr(arr, begin, end) {
 		end = end === 'undefined'? arr.length : begin + end;
-		return /*@FALLBACK START*/IEVer<10? arr.slice(begin, end) : /*@FALLBACK END*/arr.subarray(begin, end);
+		return /*@FALLBACK START*/arr.slice? arr.slice(begin, end) : /*@FALLBACK END*/arr.subarray(begin, end);
 	}
 
 	function readUTF(arr, len, offset) {
@@ -145,7 +141,7 @@
 		},
 		read_base64: function() {
 			if(this.dataBase64) return this.dataBase64;
-			var b64 = /*@FALLBACK START*/IEVer <= 9? arrToBase64( this.read_raw() ) : /*@FALLBACK END*/btoa( this.read_utf8() );
+			var b64 = /*@FALLBACK START*/typeof btoa === 'undefined'? arrToBase64( this.read_raw() ) : /*@FALLBACK END*/btoa( this.read_utf8() );
 			return (this.dataBase64 = b64);
 		}
 	};
