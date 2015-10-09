@@ -15,8 +15,6 @@
 
 	/* DO NOT MODIFY BELOW UNLESS YOU KNOW WHAT YOU ARE DOING */
 
-	
-
 	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
 
@@ -64,6 +62,7 @@
 		xhr.open('GET', url, true);
 		xhr.onreadystatechange = function() {
 			if(xhr.readyState === 4 && xhr.status === 200) {
+				console.log(!!xhr.response);
 				var data = new Uint8Array(xhr.response);
 				cb( new ZipFile(data) );
 			}

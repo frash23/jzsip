@@ -39,7 +39,7 @@ Generating minified scripts
 ---
 If you do not intend supporting IE9 and below, you can strip out fallback code using the following command:
 ```
-sed '\|//@FALLBACK|d' jzsip.js | perl -0pe 's/\/\*\@FALLBACK START.*?\@FALLBACK END\*\///sg > minified/jzsip_nofallback.js
+sed '\|//@FALLBACK|d' jzsip.js | perl -0pe 's/\/\*\@FALLBACK START.*?\@FALLBACK END\*\///sg' > minified/jzsip_nofallback.js
 ```
 To minify a script, use:
 ```
