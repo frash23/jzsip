@@ -37,7 +37,7 @@ Also hosted [here](http://dev.pj.gy/jzsip/test/).
 
 Generating minified scripts
 ---
-All fallback code is annotated. If you do not intend supporing IE9 and below, you can strip it out using this `sed` command:
+If you do not intend supporting IE9 and below, you can strip out fallback code using the following command:
 ```
 sed '\|//@FALLBACK|d' jzsip.js | perl -0pe 's/\/\*\@FALLBACK START.*?\@FALLBACK END\*\///sg > minified/jzsip_nofallback.js
 ```
@@ -50,3 +50,4 @@ uglifyjs --mangle --mangle-props --reserved-file uglify.js --comments --compress
 uglifyjs --mangle --mangle-props --reserved-file uglify.js --comments --compress unsafe minified/jzsip_nofallback.js -o minified/jzsip_nofallback.min.js
 ```
 Of course, `jzsip_nofallback.min.js` should provide the smallest filesize.
+(I usually run the above commands before `commit`ing, you're most likely fine just grabbing a script from `minified/`.)
