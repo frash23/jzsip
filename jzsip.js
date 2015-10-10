@@ -29,19 +29,19 @@
 			var wcnt = 0;
 			var workerTask = function(cmd, data, cb) {
 				var taskId = wcnt++; /*Task ID*/
-				worker.postMessage( [cmd, taskId].concat(data) );
+				worker.postMessage( [cmd, taskId, data] );
 				worker.addEventListener('message', function _(e) { if(e.data[0] === taskId) cb(e.data[1]), worker.removeEventListener('message', _); });
 			};
-			workerTask('load', [url], function() {
+			workerTask('load', url, function() {
 				callback({
-					getFile: function(name, cb, encoding) { workerTask('file', [name, encoding||'utf8'], cb); },
-					getEntry: function(name, cb) { workerTask('entry', [name], function(json) { cb( JSON.parse(json) ); }); }
+					getFile: function(name, cb, encoding) { workerTask('file', [name, encoding], cb); },
+					getEntry: function(name, cb) { workerTask('entry', name, function(json) { cb( JSON.parse(json) ); }); }
 				})
 			});
 		/*@FALLBACK START*/
 		} else loadZip(url, function(zip) {
 			callback({
-				getFile: function(name, cb, encoding) { cb(zip._getFile(name, encoding||'utf8')); },
+				getFile: function(name, cb, encoding) { cb(zip._getFile(name, encoding)); },
 				getEntry: function(name, cb) { cb( JSON.parse( zip._getEntry(name) ) ); }
 			});
 		});
@@ -51,21 +51,19 @@
 	if(!isThread/*@FALLBACK START*/ && window.Worker/*@FALLBACK END*/) {
 		if(document.currentScript) SCRIPT_URL = document.currentScript.src;
 		else if(UNSAFE_WORKER_SRC && !SCRIPT_URL) { var tags=document.getElementsByTagName('script'),tag=tags[tags.length-1]; SCRIPT_URL = tag.getAttribute('src', 2); }
-		else if(!SCRIPT_URL) throw 'Unable to get JzSip source script';
+		else if(!SCRIPT_URL) throw "Couldn't get JzSip script";
 		return; /*We only want to continue if we're a worker*/
 	}
 
 	if(isThread) { //@FALLBACK
 		var zip;
 		onmessage = function(e) {
-			if(e.data.constructor !== Array) throw 'Worker onmessage: Data not Array';
-			var cmd = e.data[0];
 			var taskId = e.data[1]
 			var data = e.data.slice(2);
-			switch(cmd) {
-				case 'load': loadZip(data[0], function(_zip) { zip = _zip; postMessage([taskId]); }); break;
-				case 'file': postMessage([taskId, zip._getFile(data[0], data[1])]); break;
-				case 'entry': postMessage([taskId, zip._getEntry(data[0])]); break;
+			switch(e.data[0]) {
+				case 'load': loadZip(data[2], function(_zip) { zip = _zip; postMessage([taskId]); }); break;
+				case 'file': postMessage([taskId, zip._getFile(e.data[2][0], e.data[2][1])]); break;
+				case 'entry': postMessage([taskId, zip._getEntry(e.data[2])]); break;
 			}
 		};
 	} //@FALLBACK
