@@ -152,7 +152,6 @@
 			this.entryTable[entry._name] = entry; /*Add to entry map*/
 		}
 	}
-	
 	ZipFile.prototype = {
 		_getFile: function(name, enc) { return this.entryTable[name].read(enc); },
 		_getEntry: function(name) {
@@ -168,14 +167,14 @@
 		}
 	};
 
-	/* The deflation method in all its glory */
+	/* Inflater | If you don't need inflation, you can omit everything below except the last line (`}());`) */
 	function inflate(arr, finalLen) {
 		var LENS =  [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];
 		var LEXT =  [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
 		var DISTS = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577];
 		var DEXT =  [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
 		var DYNAMIC_TABLE_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
-		var distcode, lencode, symbol, ncode, ndist, dist, last, type, lens, nlen, err, len, i;
+		var distcode, lencode, symbol, ncode, ndist, dist, last, type, lens, nlen, err1, err2, len, i;
 		var inbuf = arr;
 		var buflen = arr.length; /*The amount of bytes to read*/
 		var finalLen = finalLen; /*Uncompressed size as it shows up in the ZipEntry*/
@@ -268,11 +267,10 @@
 								while(symbol--) lens[i++] = len;
 							}
 						}
-
-						err = construct(lencode, lens, nlen);
-						if( err < 0 || (err > 0 && nlen - lencode.count[0] !== 1) ) throw 'inflate: Bad literal/length length codes';
-						err = construct(distcode, lens.slice(nlen), ndist);
-						if( err < 0 || (err > 0 && ndist - distcode.count[0] !== 1) ) throw 'inflate: Bad distance length codes';
+						err1 = construct(lencode, lens, nlen);
+						err2 = construct(distcode, lens.slice(nlen), ndist);
+						if( (err1<0 || (err1>0 && nlen - lencode.count [0] !== 1) )
+						||  (err2<0 || (err2>0 && ndist- distcode.count[0] !== 1))) throw 'inflate: Bad literal/length length codes';
 					}
 
 					do { /* Decode deflated data */
@@ -293,5 +291,5 @@
 			}
 		} while(!last);
 		return outbuf;
-	}
+	} /* If you're removing inflater(), remember to keep the line below */
 }());

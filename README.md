@@ -1,6 +1,6 @@
 # JzSip
 Tiny & fast library for reading ZIP files in your browser with multi-threading (IE10+). 
-Supports pretty much any browser. Works in IE11's simulated IE5.
+Supports IE9. IE8 isn't hard to implement, but notoriously slow.
 ![Yes, it's >3KB after gzip](https://raw.githubusercontent.com/frash23/jzsip/master/filesize.png)
 
 Why?
@@ -12,6 +12,8 @@ Everything for regular archives should be supported *except* encrypted files
 and writing to the Zip-file.
 
 Inflating is slow. Use it if you have lots of text or other easily compressible media, otherwise avoid it.
+Please **DO NOT** use compression on files larger than 6-10MB unless you really know what you are doing.
+It is notoriously slow on IE9 (5-10 seconds) and noticeably slow on modern browsers as well (1-3 seconds).
 
 
 Usage
@@ -37,7 +39,7 @@ Also hosted [here](http://dev.pj.gy/jzsip/test/).
 
 Generating minified scripts
 ---
-If you do not intend supporting IE9 and below, you can strip out fallback code using the following command:
+If you do not intend supporting IE9, you can strip out fallback code using the following command:
 ```
 sed '\|//@FALLBACK|d' jzsip.js | perl -0pe 's/\/\*\@FALLBACK START.*?\@FALLBACK END\*\///sg' > minified/jzsip_nofallback.js
 ```

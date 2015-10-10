@@ -4,5 +4,5 @@
 		"JzSip", "getEntry", "getFile", "name", "isDirectory", "timestamp", "comment", "method", "size",
 		
 		"_Native properties that shouldn't be mangled",
-		"length", "prototype", "href", "src", "data", "responseType"]
+		"length", "prototype", "href", "src", "onload", "data", "responseType"]
 }

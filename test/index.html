@@ -37,7 +37,7 @@
 			var safeMap = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', '\'':'&#039;' };
 			function htmlentities(text) { return text.replace(/[&<>"']/g, function(s) { return safeMap[s]; }); }
 
-			new JzSip('test.deflate.zip', function(zip) {
+			new JzSip('test.zip', function(zip) {
 				window.zip = zip;
 				zip.getFile('test.txt', alert);
 				zip.getFile('Images/jzsip.png', function(imgData) { $('logo').src = 'data:image/png;base64,'+ imgData; }, 'base64');
