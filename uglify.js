@@ -1,3 +1,8 @@
 {	"_comment": "This file defines properties UglifyJS shouldn't mangle. See usage in `README.md`",
-	"props": ["JzSip", "getEntry", "getFile", "read_raw", "read_utf8", "read_base64", "prototype", "href", "src", "data", "onreadystatechange", "responseType"]
+	"props": [
+		"_JzSip specifc stuff",
+		"JzSip", "getEntry", "getFile", "name", "isDirectory", "timestamp", "comment", "method", "size",
+		
+		"_Native properties that shouldn't be mangled",
+		"length", "prototype", "href", "src", "data", "onreadystatechange", "responseType"]
 }
