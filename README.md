@@ -33,6 +33,16 @@ zip.getFile('Images/myImage.png', function(imgData) {
 	document.body.appendChild(imgElem);
 }, 'base64');
 ```
+The `zip` variable passed to the `JzSip` callback is an object literal with the following properties:
+* `getFile(fileName, callback[, encoding="utf8"])`: Reads a file and passes the data to the callback
+function. Default encoding is `"utf8"` (text/string), you can also use `"raw" -> Uint8Array|Array`
+and `"base64" -> Base64 String`, which includes a fast `Array[Byte]`->`Base64 String` function for IE9
+* `getEntry(fileName, callback)` Passes a JSON Object to the callback with the following metadata:
+* * `name` - Filename of the entry
+* * `isDirectory` - Boolean describing if the entry is a folder or file
+* * `method` - Compress algorithm used. JzSip supporst `0` (uncompressed) and `8` (deflated)
+* * `size` - The filesize of the entry in bytes
+* * `timestamp` - UNIX timestamp of when the entry was last modified
 
 For live demos, check the `test` folder.
 Also hosted [here](http://dev.pj.gy/jzsip/test/).
