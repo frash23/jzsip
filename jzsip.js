@@ -17,7 +17,7 @@
 
 	/* DO NOT MODIFY BELOW UNLESS YOU KNOW WHAT YOU ARE DOING */
 
-	var USE_VBARRAY = typeof Uint8Array === 'undefined';
+	var USE_VBARRAY = typeof Uint8Array === 'undefined'; //@FALLBACK
 	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
 
@@ -58,12 +58,10 @@
 	if(isThread) { //@FALLBACK
 		var zip;
 		onmessage = function(e) {
-			var taskId = e.data[1]
-			var data = e.data.slice(2);
-			switch(e.data[0]) {
-				case 'load': loadZip(data[2], function(_zip) { zip = _zip; postMessage([taskId]); }); break;
-				case 'file': postMessage([taskId, zip._getFile(e.data[2][0], e.data[2][1])]); break;
-				case 'entry': postMessage([taskId, zip._getEntry(e.data[2])]); break;
+			switch(e.data[0]) { /* e.data[0]=cmd, e.data[1]=TaskID, e.data[2]=cmd data */
+				case 'load': loadZip(e.data[2], function(_zip) { zip = _zip; postMessage([e.data[1]]); }); break;
+				case 'file': postMessage([e.data[1], zip._getFile(e.data[2][0], e.data[2][1])]); break;
+				case 'entry': postMessage([e.data[1], zip._getEntry(e.data[2])]); break;
 			}
 		};
 	} //@FALLBACK
@@ -71,11 +69,10 @@
 	function loadZip(url, cb) {
 		var xhr = new XMLHttpRequest();
 		xhr.open('GET', url, true);
-		xhr.onreadystatechange = function() {
-			if(xhr.readyState === 4 && xhr.status === 200) {
-				var data = /*@FALLBACK START*/USE_VBARRAY? new VBArray(xhr.responseBody).toArray() : /*@FALLBACK END*/new Uint8Array(xhr.response);
-				cb( new ZipFile(data) );
-			}
+		xhr.onload = function() {
+			var data = /*@FALLBACK START*/USE_VBARRAY? new VBArray(xhr.responseBody).toArray() : /*@FALLBACK END*/new Uint8Array(xhr.response);
+			cb( new ZipFile(data) );
+			xhr = null;
 		};
 		xhr.responseType = 'arraybuffer';
 		xhr.send(null);
@@ -90,8 +87,7 @@
 		offset = offset || 0;
 		arr = subArr(arr, offset, len);
 		var out = '';
-
-		for(var i=0,l=Math.ceil(arr.length/CALLSIZE); i<l; i++) out += String.fromCharCode.apply(null, subArr(arr, i*CALLSIZE, i<l? CALLSIZE : arr.length%CALLSIZE));
+		for(var i=0,l=arr.length; i<l; i+=CALLSIZE) out += String.fromCharCode.apply(null, subArr(arr, i, CALLSIZE));
 		return out;
 	}
 	
@@ -101,18 +97,14 @@
 		var len = arr.length;
 		var output = '';
 		var c; /*chunk*/
-
-		for (var i=0,l=len-len%3; i <l; i++) {
-			c = (arr[i] << 16) + (arr[++i] << 8) + (arr[++i]);
+		for (var i=0,l=len-len%3; i<l; ) {
+			c = (arr[i++] << 16) + (arr[i++] << 8) + (arr[i++]);
 			output += b64char[c >> 18 & 0x3F] + b64char[c >> 12 & 0x3F] + b64char[c >> 6 & 0x3F] + b64char[c & 0x3F];
 		}
-
 		if(len%3 === 1) c = arr[arr.length - 1], output += b64char[c >> 2] + b64char[(c << 4) & 0x3F] + '==';
 		else c = (arr[arr.length - 2] << 8) + (arr[arr.length - 1]), output += b64char[c >> 10] + b64char[(c >> 4) & 0x3F] + b64char[(c << 2) & 0x3F] + '=';
-
 		return output;
-	};
-	/*@FALLBACK END*/
+	};/*@FALLBACK END*/
 
 	function readUInt(arr, i) { return (arr[i+3] << 24) | (arr[i+2] << 16) | (arr[i+1] << 8) | arr[i]; }
 	function readUShort(arr, i) { return ((arr[i+1]) << 8) | arr[i]; }
@@ -123,15 +115,10 @@
 		switch( encoding.toLowerCase() ) {
 		case 'raw':
 			if(this.data) return this.data;
-			var fileData = subArr(zip.data, this.dataStart, this.compressedSize);	
-
+			var fileData = subArr(this.zip.data, this.dataStart, this.compressedSize);	
 			if(this._method === 0/*STORED*/) { this.data = fileData; return fileData; }
-			else if(this._method === 8/*DEFLATED*/) {
-				var inflater = new Inflater(fileData, this._size)
-				this.data = inflater.inflate();
-				inflater = null;
-				return this.data;
-			} else throw 'ZipEntry#read_raw: Invalid compression method';
+			else if(this._method === 8/*DEFLATED*/) return (this.data = inflate(fileData, this._size));
+			else throw 'ZipEntry: Invalid compression method';
 
 		case 'base64':
 			if(this.dataBase64) return this.dataBase64;
@@ -153,30 +140,26 @@
 		var n = Math.max(0, i - 0xFFFF); /*0xFFFF=Max zip comment length*/
 		var zipEnd;
 		while(i-- >= n) if(readUInt(data, i) === 0x06054B50) zipEnd = i;
-		if(!zipEnd) throw 'Parsing header: File ended abrubtly, invalid zip';
+		if(!zipEnd) throw 'ZipFile: File ended abrubtly, invalid zip';
 
 		var head = subArr(data, zipEnd, 22);
 		var entryAmount = readUShort(head, 10);
 		/* Process entries */
 		var offset = readUInt(head, 0x10); /*0x10=Offset of first CEN header*/
 		for(var i=0; i<entryAmount; i++) {
-			var tmpdata = subArr(data, offset, 0x2E); /*VERIFY HEADER | 0x2E=Cen header size*/
-			offset += 46;
-			if( readUInt(tmpdata, 0x0) !== 0x02014B50 ) throw 'Reading entries: Bad CEN signature'; /*0x02014B50=CEN signature/"PK\001\002"*/
+			var tmpdata = subArr(data, offset, 0x2E); offset += 46; /*VERIFY HEADER | 0x2E=Cen header size*/
+			if( readUInt(tmpdata, 0x0) !== 0x02014B50 ) throw 'ZipFile: Bad CEN signature'; /*0x02014B50=CEN signature/"PK\001\002"*/
 			var len = readUShort(tmpdata, 0x1C); /*NAME | 0x1C=Name size*/
-			if(len === 0) throw 'Read entries: Entry missing name';
-			var entry = new ZipEntry( readUTF(data, len, offset) ); 
-			offset += len;
+			if(len === 0) throw 'ZipFile: Entry missing name';
+			var entry = new ZipEntry( readUTF(data, len, offset) );  offset += len;
 			entry._isDirectory = entry._name.charAt(entry._name.length-1) === '/'? true : false;
 			len = readUShort(tmpdata, 0x1E); /*EXTRA FIELD | 0x1E=Extra field size*/
-			if(len > 0) entry.extra = subArr(data, offset, len);
-			offset += len;
+			if(len > 0) entry.extra = subArr(data, offset, len); offset += len;
 			len = readUShort(tmpdata, 0x20); /*COMMENT | 0x20=Comment field size*/
-			entry._comment = readUTF(data, len, offset);
-			offset += len;
+			entry._comment = readUTF(data, len, offset); offset += len;
 			entry.version = readUShort(tmpdata, 0x06); /*VERSION*/
 			entry.flag = readUShort(tmpdata, 0x08); /*FLAG*/
-			if( (entry.flag & 1) === 1 ) throw 'read entries: Encrypted ZIP entry not supported';
+			if( (entry.flag & 1) === 1 ) throw 'ZipFile: Encrypted entries not supported';
 			entry._method = readUShort(tmpdata, 0x0A); /*COMPRESSION METHOD*/
 			var dostime = readUInt(tmpdata, 0x0C); /*DOSTIME*/
 			entry._timestamp= new Date(/*Year  */((dostime >> 25) & 0x7F) + 1980,
@@ -212,168 +195,131 @@
 	};
 
 	/* The deflation method in all its glory */
-	function Inflater(arr, finalLen) {
-		this.inbuf = arr;
-		this.len = arr.length; /*The amount of bytes to read*/
-		this.finalLen = finalLen; /*Uncompressed size as it shows up in the ZipEntry*/
-		this.outbuf = USE_VBARRAY? [] : new Uint8Array(finalLen);
-	}
-	Inflater.LENS =  [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];
-	Inflater.LEXT =  [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
-	Inflater.DISTS = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577];
-	Inflater.DEXT =  [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
-	Inflater.DYNAMIC_TABLE_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
-	Inflater.prototype = {
-		incnt: 0, /*Amount of bytes read*/
-		outcnt: 0, /*Bytes written to this.outbuf*/
-		bitcnt: 0, /*Helper to keep track of where we are in #bits*/
-		/* Huffman tables */
+	function inflate(arr, finalLen) {
+		var LENS =  [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];
+		var LEXT =  [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
+		var DISTS = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577];
+		var DEXT =  [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
+		var DYNAMIC_TABLE_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+		var distcode, lencode, symbol, ncode, ndist, dist, last, type, lens, nlen, err, len, i;
+		var inbuf = arr;
+		var buflen = arr.length; /*The amount of bytes to read*/
+		var finalLen = finalLen; /*Uncompressed size as it shows up in the ZipEntry*/
+		var incnt = 0; /*Amount of bytes read*/
+		var outcnt = 0; /*Bytes written to outbuf*/
+		var bitcnt = 0; /*Helper to keep track of where we are in #bits*/
+		var bitbuf = 0;
+		var outbuf = /*@FALLBACK START*/USE_VBARRAY? [] : /*@FALLBACK END*/new Uint8Array(finalLen);
 
-		bits: function(need) {
-			var out = this.bitbuf;
-			while(this.bitcnt < need) {
-				if(this.incnt === this.len) throw 'Inflater#bits: Available data did not terminate ';
-				out |= this.inbuf[this.incnt++] << this.bitcnt;
-				this.bitcnt += 8;
+		/* Helper functions */
+		var bits = function(need) {
+			var out = bitbuf;
+			while(bitcnt < need) {
+				if(incnt === buflen) throw 'inflate: Data overflow';
+				out |= inbuf[incnt++] << bitcnt;
+				bitcnt += 8;
 			}
-			this.bitbuf = out >> need;
-			this.bitcnt -= need;
+			bitbuf = out >> need;
+			bitcnt -= need;
 			return out & ((1 << need) - 1);
-		},
-
-		decode: function(codes) {
+		};
+		var decode = function(codes) {
 			var code = 0, first = 0, i = 0, count;
 			for(var j=1; j <= 0xF; j++) {
-				code |= this.bits(1);
+				code |= bits(1);
 				count = codes.count[j];
 				if(code < first + count) return codes.symbol[i + (code-first)];
-				i += count;
-				first += count;
-				first <<= 1;
-				code <<= 1;
+				i += count; first += count; first <<= 1; code <<= 1;
 			}
-			return -9;
-		},
-
-		stored: function() {
-			this.bitbuf = this.bitcnt = 0;
-			if(this.incnt+4 > this.len) throw 'Inflater#stored: Available data did not terminate';
-			var len = this.inbuf[this.incnt++];
-			len |= this.inbuf[this.incnt++] << 8;
-			if(this.inbuf[this.incnt++] !== (~len & 0xFF)
-			|| this.inbuf[this.incnt++] !== ((~len >> 8) & 0xFF)) throw 'Inflater#stored: Stored block length did not match actual length';
-			if(this.incnt + len > this.len) throw 'Inflater#stored: Data overflow';
-			if(USE_VBARRAY) this.outbuf = this.outbuf.concat( subArr(this.inbuf, this.incnt) );
-			else this.outbuf.set( subArr(this.inbuf, this.incnt), len );
-			this.outcnt += len; this.incnt += len;
-		},
-
-		codes: function() {
-			var symbol, len, dist;
-			do {
-				symbol = this.decode(this.lencode);
-				if(symbol < 0) return symbol;
-				if(symbol < 256) this.outbuf[this.outcnt++] = symbol;
-				if(symbol > 256) {
-					symbol -= 257;
-					if(symbol > 28) throw 'Inflater#codes: Invalid length or distance';
-					len = Inflater.LENS[symbol] + this.bits(Inflater.LEXT[symbol]);
-					symbol = this.decode(this.distcode);
-					if(symbol < 0) return symbol;
-					var dist = Inflater.DISTS[symbol] + this.bits(Inflater.DEXT[symbol]);
-					if(dist > this.outcnt) throw 'Inflater#codes: Distance out of range';
-					while(len--) this.outbuf[this.outcnt] = this.outbuf[this.outcnt++ - dist];
-					if(symbol === 256) throw 'aaa';
-				}
-			} while(symbol !== 256);
-
-			return 0;
-		},
-
-		construct: function(codes, lens, n) {
-			var offs = [undefined, 0];
-			var left = 1;
+		};
+		var construct = function(codes, lens, n) {
+			var offs = [/*undefined*/, 0], left = 1;
 			for(var i=0; i<=0xF; i++) codes.count[i] = 0;
 			for(i=0; i<n; i++) codes.count[lens[i]]++;
 			if(codes.count[0] === n) return 0;
-			for(i=1; i<=0xF; i++) {
-				left <<= 1;
-				left -= codes.count[i];
-				if(left < 0) return left;
-			}
+			for(i=1; i<=0xF; i++) if((left = (left<<1) - codes.count[i]) < 0) return left;
 			for(i=1; i< 0xF; i++) offs[i+1] = offs[i] + codes.count[i];
 			for(i=0; i<n; i++) if(lens[i] !== 0) codes.symbol[offs[lens[i]]++] = i;
 			return left;
-		},
+		};
 
-		constructTables: function(type) {
-			var lens = [];
-			
-			if(type === 1) { /*Fixed tables*/
-				if(console && console.warn) console.warn('Here lies untested code');
-				for(var symbol=0; symbol < 0x90; symbol++) lens[symbol] = 8;
-				for(; symbol < 0x100; symbol++) lens[symbol] = 9;
-				for(; symbol < 0x118; symbol++) lens[symbol] = 7;
-				for(; symbol < 0x120; symbol++) lens[symbol] = 8;
-				this.construct(this.lencode, lens, 0x120);
-				for(symbol=0; symbol < 0x1E; symbol++) lens[symbol] = 5;
-				this.construct(this.distcode, lens, 0x1E);
-			} else if(type === 2) { /*Dynamic tables*/
-				var nlen = this.bits(5) + 257;
-				var ndist = this.bits(5) + 1;
-				var ncode = this.bits(4) + 4;
-				if(nlen > 0x11E || ndist > 0x1E) throw 'Inflater#constructTables: Dynamic block description: Too many length or distance codes';
-				for(var i=0; i<ncode; i++) lens[Inflater.DYNAMIC_TABLE_ORDER[i]] = this.bits(3);
-				for(; i<19; i++) lens[Inflater.DYNAMIC_TABLE_ORDER[i]] = 0;
-				var err = this.construct(this.lencode, lens, 19);
-				if(err !== 0) throw 'Inflater#constructTables: Dynamic block description: code lengths codes incomplete';
+		do { /* The actual inflation */
+			last = bits(1);
+			type = bits(2);
 
-				var len, symbol;
-				i = 0;
-				while(i < nlen+ndist) {
-					symbol = this.decode(this.lencode);
-					if(symbol < 16) lens[i++] = symbol;
-					else {
-						len = 0;
-						if(symbol === 16) {
-							if(i === 0) throw 'Inflater#constructTables: Dynamic block description: repeat lengths with no first length';
-							len = lens[i-1];
-							symbol = 3 + this.bits(2);
-						} else if(symbol === 17) symbol = 3 + this.bits(3);
-						else symbol = 11 + this.bits(7);
-						if(i + symbol > nlen + ndist) throw 'Inflater#constructTables: Dynamic block description: repeat more than specified lengths';
-						while(symbol--) lens[i++] = len;
+			switch(type) {
+				case 0: /* STORED */
+					bitbuf = bitcnt = 0;
+					if(incnt+4 > buflen) throw 'inflate: Data overflow';
+					len = inbuf[incnt++];
+					len |= inbuf[incnt++] << 8;
+					if(inbuf[incnt++] !== (~len & 0xFF) || inbuf[incnt++] !== ((~len >> 8) & 0xFF)) throw 'Inflater: Bad length';
+					if(incnt + len > buflen) throw 'Inflater: Data overflow';
+					/*@FALLBACK START*/if(USE_VBARRAY) outbuf.push.apply(outbuf, outbuf.slice(incnt, incnt+len) ), outcnt += len, incnt += len;
+					else /*@FALLBACK END*/while(len--) outbuf[outcnt++] = inbuf[incnt++];
+				break;
+				case 1: case 2: /* FIXED|DYNAMIC HUFFMAN */
+					lencode = {count:[], symbol:[]};
+					distcode = {count:[], symbol:[]};
+					lens = [];
+					if(type === 1) { /* Construct fixed huffman tables */
+						/*UNTESTED*/
+						for(symbol=0; symbol < 0x90; symbol++) lens[symbol] = 8;
+						for(; symbol < 0x100; symbol++) lens[symbol] = 9;
+						for(; symbol < 0x118; symbol++) lens[symbol] = 7;
+						for(; symbol < 0x120; symbol++) lens[symbol] = 8;
+						construct(lencode, lens, 0x120);
+						for(symbol=0; symbol < 0x1E; symbol++) lens[symbol] = 5;
+						construct(distcode, lens, 0x1E);
+					} else { /* Construct dynamic huffman tables */
+						nlen = bits(5) + 257;
+						ndist = bits(5) + 1;
+						ncode = bits(4) + 4;
+						if(nlen > 0x11E || ndist > 0x1E) throw 'inflate: Length/distance code overflow';
+						for(i=0; i<ncode; i++) lens[DYNAMIC_TABLE_ORDER[i]] = bits(3);
+						for(; i<19; i++) lens[DYNAMIC_TABLE_ORDER[i]] = 0;
+						if( construct(lencode, lens, 19) !== 0 ) throw 'inflate: Length codes incomplete';
+
+						for(i=0; i < nlen+ndist;) {
+							symbol = decode(lencode);
+							if(symbol < 16) lens[i++] = symbol;
+							else {
+								len = 0;
+								if(symbol === 16) {
+									if(i === 0) throw 'inflate: Repeat lengths with no first length';
+									len = lens[i-1];
+									symbol = 3 + bits(2);
+								} else if(symbol === 17) symbol = 3 + bits(3);
+								else symbol = 11 + bits(7);
+								if(i + symbol > nlen + ndist) throw 'inflite: More lengths than specified';
+								while(symbol--) lens[i++] = len;
+							}
+						}
+
+						err = construct(lencode, lens, nlen);
+						if( err < 0 || (err > 0 && nlen - lencode.count[0] !== 1) ) throw 'inflate: Bad literal/length length codes';
+						err = construct(distcode, lens.slice(nlen), ndist);
+						if( err < 0 || (err > 0 && ndist - distcode.count[0] !== 1) ) throw 'inflate: Bad distance length codes';
 					}
-				}
 
-				var err = this.construct(this.lencode, lens, nlen);
-				if( err < 0 || (err > 0 && nlen - this.lencode.count[0] !== 1) ) throw 'Inflater#constructTables: Dynamic block description: invalid literal/length code lengths';
-				err = this.construct(this.distcode, lens.slice(nlen), ndist);
-				if( err < 0 || (err > 0 && ndist - this.distcode.count[0] !== 1) ) throw 'Inflater#constructTables: dynamic block description: invalid distance code lengths';
-			} else throw 'Inflater#constructTables: Invalid type: '+type;
-		},
-
-		inflate: function() {
-			var last, type;
-			var i = 0;
-			do {
-				i++;
-				last = this.bits(1);
-				type = this.bits(2);
-
-				switch(type) {
-					case 0: this.stored(); break;
-					case 1:
-					case 2: 
-						this.lencode = {count:[], symbol:[]},
-						this.distcode = {count:[], symbol:[]},
-						this.constructTables(type);
-						if( this.codes() !== 0) throw 'booby';
-					break;
-					default: throw 'Inflater#inflate: Invalid block type '+type;
-				}
-			} while(!last);
-			return this.outbuf;
-		}
-	};
+					do { /* Decode deflated data */
+						symbol = decode(lencode);
+						if(symbol < 256) outbuf[outcnt++] = symbol;
+						if(symbol > 256) {
+							symbol -= 257;
+							if(symbol > 28) throw 'inflate: Invalid length/distance';
+							len = LENS[symbol] + bits(LEXT[symbol]);
+							symbol = decode(distcode);
+							dist = DISTS[symbol] + bits(DEXT[symbol]);
+							if(dist > outcnt) throw 'inflate: Distance out of range';
+							/*@FALLBACK START*/if(USE_VBARRAY) outbuf.push.apply( outbuf, outbuf.slice(outcnt-dist, outcnt-dist + len) );
+							/*@FALLBACK END*/while(len--) outbuf[outcnt] = outbuf[outcnt++ - dist];
+						}
+					} while(symbol !== 256);
+				break;
+				default: throw 'Inflater: Unsupported compression type '+type;
+			}
+		} while(!last);
+		return outbuf;
+	}
 }());

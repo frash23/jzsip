@@ -49,8 +49,10 @@
 				}, 150);
 
 				$('loadAudio').onclick = function(e) {
+					var start = Date.now(), _this = this;
 					zip.getFile('Audio/TheFatRat - Unity.mp3', function(audioData) {
 						$('audio').src = 'data:audio/mp3;base64,'+ audioData;
+						_this.textContent += ' (Took '+ (Date.now() - start) +'ms)';
 					}, 'base64');
 				};
 
