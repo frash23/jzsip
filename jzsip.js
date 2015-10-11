@@ -1,8 +1,8 @@
 /**[JzSip 0.5a](https://github.com/frash23/jzsip) @License MIT */
 /* Lines with "//@FALLBACK" or between / *@FALLBACK START/END* / can be omitted if you don't need the
- * single-threaded fallback for IE<=9, a script to do this can be found in the readme */ //@FALLBACK
+ * single-threaded fallback for IE9, a script to do this can be found in the readme */ //@FALLBACK
 
-(function () {
+(function (expo) {
 	"use strict";
 
 	/* If you're loading JzSip dynamically, you may have to
@@ -21,9 +21,9 @@
 	var isThread = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 	var CALLSIZE = 25000; /*Used in readUTFBytes*/
 
-	if(!isThread) window.JzSip = function Zip(url, callback) {
+	if(!isThread) expo.JzSip = function Zip(url, callback) {
 		var _url = document.createElement('a'); _url.href=url;
-		url=_url.href; /* This converts `url` to an absolute path (Workers change base to root) */
+		url = _url.href; /* This converts `url` to an absolute path (Workers change base to root) */
 		if(window.Worker) { //@FALLBACK
 			var worker = new Worker(SCRIPT_URL);
 			var wcnt = 0;
@@ -49,8 +49,14 @@
 	};
 
 	if(!isThread/*@FALLBACK START*/ && window.Worker/*@FALLBACK END*/) {
-		if(document.currentScript) SCRIPT_URL = document.currentScript.src;
-		else if(UNSAFE_WORKER_SRC && !SCRIPT_URL) { var tags=document.getElementsByTagName('script'),tag=tags[tags.length-1]; SCRIPT_URL = tag.getAttribute('src', 2); }
+		if(SCRIPT_URL) 0; /*We already have a script to get, we don't need to do more.*/
+		else if(document.currentScript) SCRIPT_URL = document.currentScript.src;
+		else if(UNSAFE_WORKER_SRC) { 
+			var tags=document.getElementsByTagName('script');
+			if(tags.length < 1) throw "Couldn't get JzSip script";
+			SCRIPT_URL = tag.getAttribute('src', 2);
+			if(!SCRIPT_URL) throw "Couldn't get JzSip script";
+		}
 		else if(!SCRIPT_URL) throw "Couldn't get JzSip script";
 		return; /*We only want to continue if we're a worker*/
 	}
@@ -72,14 +78,13 @@
 		xhr.onload = function() {
 			var data = /*@FALLBACK START*/USE_VBARRAY? new VBArray(xhr.responseBody).toArray() : /*@FALLBACK END*/new Uint8Array(xhr.response);
 			cb( new ZipFile(data) );
-			xhr = null;
 		};
 		xhr.responseType = 'arraybuffer';
 		xhr.send(null);
 	}
 
 	function subArr(arr, begin, end) {
-		end = end === 'undefined'? arr.length : begin + end;
+		end = typeof end === 'undefined'? arr.length : begin + end;
 		return /*@FALLBACK START*/arr.slice? arr.slice(begin, end) : /*@FALLBACK END*/arr.subarray(begin, end);
 	}
 
@@ -320,4 +325,4 @@
 		} while(!last);
 		return outbuf;
 	} /* If you're removing inflater(), remember to keep the line below */
-}());
+}(window)); /*What object should we expose JzSip under?*
