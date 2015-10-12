@@ -49,7 +49,7 @@
 	};
 
 	if(!isThread/*@FALLBACK START*/ && window.Worker/*@FALLBACK END*/) {
-		if(SCRIPT_URL) 0; /*We already have a script to get, we don't need to do more.*/
+		if(SCRIPT_URL); /*We already have a script to get, we don't need to do more.*/
 		else if(document.currentScript) SCRIPT_URL = document.currentScript.src;
 		else if(UNSAFE_WORKER_SRC) { 
 			var tags=document.getElementsByTagName('script');
@@ -324,5 +324,6 @@
 			}
 		} while(!last);
 		return outbuf;
-	} /* If you're removing inflater(), remember to keep the line below */
-}(window)); /*What object should we expose JzSip under?*
+	}
+	/* If you're removing inflater(), remember to keep the line below */
+}(typeof window !== 'undefined'? window : this)); /*What object should we expose JzSip under?*/
