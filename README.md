@@ -40,7 +40,7 @@ and `"base64" -> Base64 String`, which includes a fast `Array[Byte]`->`Base64 St
 * `getEntry(fileName, callback)` Passes a JSON Object with the following metadata:
 	* `name` - Filename of the entry
 	* `isDirectory` - Boolean describing if the entry is a folder or file
-	* `method` - Compress algorithm used. JzSip supporst `0` (uncompressed) and `8` (deflated)
+	* `method` - Compress algorithm used. JzSip supports `0` (uncompressed) and `8` (deflated)
 	* `size` - The filesize of the entry in bytes
 	* `timestamp` - UNIX timestamp of when the entry was last modified
 
