@@ -31,7 +31,7 @@
 			workerTask('load', url, function() {
 				callback({
 					getFile: function(name, cb, encoding) { workerTask('file', [name, encoding], cb); },
-					getEntry: function(name, cb) { workerTask('entry', name, function(json) { cb( JSON.parse(json) ); }); }
+					getEntry: function(name, cb) { workerTask('entry', name, cb); }
 				})
 			});
 		
@@ -158,17 +158,32 @@
 		}
 	}
 	ZipFile.prototype = {
-		_getFile: function(name, enc) { return this.entryTable[name].read(enc); },
+		_getFile: function(name, enc) { 
+			if(typeof name === 'string') return this.entryTable[name].read(enc);
+			else if(name.constructor === Array) {
+				var out = {};
+				for(var i=0; i<name.length; i++) out[name[i]] = this.entryTable[name[i]].read(enc);
+				return out;
+			}
+		},
 		_getEntry: function(name) {
-			var entry = this.entryTable[name];
-			return JSON.stringify({
-				name: entry._name,
-				isDirectory: entry._isDirectory,
-				timestamp: entry._timestamp,
-				size: entry._size,
-				comment: entry._comment,
-				method: entry._method
-			});
+			var getSimpleEntry = function(entry) {
+				return {
+					name: entry._name,
+					isDirectory: entry._isDirectory,
+					timestamp: entry._timestamp,
+					size: entry._size,
+					comment: entry._comment,
+					method: entry._method
+				};
+			};
+				
+			if(typeof name === 'string') return getSimpleEntry(this.entryTable[name]);
+			else if(name.constructor === Array) {
+				var out = {};
+				for(var i=0; i<name.length; i++) out[name[i]] = getSimpleEntry(this.entryTable[name[i]]);
+				return out;
+			}
 		}
 	};
 
