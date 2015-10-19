@@ -44,6 +44,15 @@ and `"base64" -> Base64 String`, which includes a fast `Array[Byte]`->`Base64 St
 	* `size` - The filesize of the entry in bytes
 	* `timestamp` - UNIX timestamp of when the entry was last modified
 
+**To load multiple files:** Simply pass an array of filenames instead of a single string, like so:
+```
+zip.getFile(['test.txt', 'images/otherfile.bmp'], function(files) {
+	console.log( files['test.txt'] ); /* Will log the contents of `test.txt` */
+	console.log( files['images/otherfile.bmp'] );
+});
+```
+JzSip#getEntry has the same behavior.
+
 For live demos, check the `test` folder.
 Also hosted [here](http://dev.pj.gy/jzsip/test/).
 
